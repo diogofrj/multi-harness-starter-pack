@@ -1,55 +1,11 @@
-# -----------------------------------------------------------------------------
-# Segredos e Variáveis de Ambiente (CRÍTICO)
-# -----------------------------------------------------------------------------
-.env
-.env.*
-!.env.example
-secrets/
-*.pem
-*.key
-*.p12
-*.pfx
-id_rsa*
-id_ed25519*
-credentials.json
-service-account*.json
-
-# -----------------------------------------------------------------------------
-# Claude Code / Antigravity / Harnesses
-# -----------------------------------------------------------------------------
+# Claude Code — local settings (preferências pessoais não devem ir pro git)
 .claude/settings.local.json
+
+# Logs gerados pelos hooks (ative se for usar)
 .claude/logs/
 .claude/bash-commands.log
+
+# Cache local
 .claude/.cache/
-.gemini/tmp/
-.antigravity/
 
-# -----------------------------------------------------------------------------
-# Dependências e Builds
-# -----------------------------------------------------------------------------
-node_modules/
-dist/
-build/
-.next/
-out/
-.pnpm-store/
-
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-.venv/
-venv/
-env/
-.pytest_cache/
-.mypy_cache/
-.ruff_cache/
-
-# -----------------------------------------------------------------------------
-# Git Worktrees e Caches do SO
-# -----------------------------------------------------------------------------
-.worktrees/
-../worktrees/
-.DS_Store
-Thumbs.db
-*.log
+aula-wsl-claude-code-starter.md
