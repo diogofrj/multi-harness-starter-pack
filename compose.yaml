@@ -1,0 +1,15 @@
+services:
+  board:
+    build: .
+    container_name: multi-harness-board
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./.devtool:/app/.devtool:ro
+      - ./dist:/app/dist
+      - ./server.mjs:/app/server.mjs
+      - ./scripts:/app/scripts
+    environment:
+      - PORT=3000
+      - NODE_ENV=development
+    restart: unless-stopped

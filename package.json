@@ -1,0 +1,14 @@
+{
+  "name": "multi-harness-starter-pack",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node server.mjs",
+    "dev": "node server.mjs",
+    "build": "node scripts/build-board.mjs",
+    "pulse": "node scripts/agent-pulse.mjs"
+  }
+}

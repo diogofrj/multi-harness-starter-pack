@@ -18,6 +18,10 @@ dev: ## Inicia o ambiente de desenvolvimento local
 	@echo "🚀 Iniciando servidor de desenvolvimento..."
 	@if [ -f package.json ]; then pnpm dev 2>/dev/null || npm run dev; fi
 
+board: ## Inicia o board local com telemetria de agentes em tempo real
+	@echo "🪐 Subindo board local em http://localhost:3000..."
+	@if command -v docker >/dev/null 2>&1 && [ -f compose.yaml ]; then docker compose up; else node server.mjs; fi
+
 # -----------------------------------------------------------------------------
 # Qualidade e Verificação
 # -----------------------------------------------------------------------------
