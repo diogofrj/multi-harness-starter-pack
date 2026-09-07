@@ -1,4 +1,12 @@
 {
   "$schema": "https://json.schemastore.org/mcp.json",
-  "mcpServers": {}
+  "mcpServers": {
+    "muninn": {
+      "type": "sse",
+      "url": "https://muninn.fulltech.app/mcp",
+      "headers": {
+        "Authorization": "Bearer ${MUNINN_API_KEY}"
+      }
+    }
+  }
 }

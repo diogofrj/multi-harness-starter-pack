@@ -1,21 +1,20 @@
 <div align="center">
 
-<img src="claude-lendo.png" alt="Claude lendo" width="180">
+<img src="claude-lendo.png" alt="Multi-Harness Starter Pack" width="160">
 
-# 🧰 Claude Code Starter Pack
+# ⚡ Multi-Harness Starter Pack
+### *Google Antigravity · Claude Code · Codex*
 
-### *B2 Tech Edition*
-
-**Base mínima, opinativa e segura para começar qualquer projeto com Claude Code.**
-
-Permissões determinísticas · Hooks que rodam 100% das vezes · Skills sob demanda · Empacotável como plugin.
+**A fundação definitiva para desenvolvimento de software governado por agentes e múltiplos harnesses.**  
+*Contrato Canônico Único · Memória Persistente (Muninn MCP) · Desenvolvimento em Waves · Blindagem contra Amnésia e Vazamentos.*
 
 <br>
 
-![Claude Code](https://img.shields.io/badge/Claude_Code-v2.1%2B-D97757?style=for-the-badge&logo=anthropic&logoColor=white)
-![License](https://img.shields.io/badge/license-MIT-3FB950?style=for-the-badge)
-![Stack](https://img.shields.io/badge/stack-Python_·_Next.js_·_GCP-1F6FEB?style=for-the-badge)
-![Status](https://img.shields.io/badge/version-2.0-8957E5?style=for-the-badge)
+[![Antigravity](https://img.shields.io/badge/Antigravity-IDE_%26_CLI-4285F4?style=for-the-badge&logo=google&logoColor=white)](https://antigravity.google)
+[![Claude Code](https://img.shields.io/badge/Claude_Code-v2.1%2B-D97757?style=for-the-badge&logo=anthropic&logoColor=white)](https://claude.ai)
+[![Codex](https://img.shields.io/badge/Codex-CLI-10A37F?style=for-the-badge&logo=openai&logoColor=white)](https://openai.com)
+[![Muninn](https://img.shields.io/badge/Second_Brain-MCP_Muninn-9333EA?style=for-the-badge)](https://muninn.fulltech.app)
+[![License](https://img.shields.io/badge/license-MIT-3FB950?style=for-the-badge)](LICENSE)
 
 </div>
 
@@ -23,230 +22,215 @@ Permissões determinísticas · Hooks que rodam 100% das vezes · Skills sob dem
 
 ## 📑 Índice
 
-- [Por que existe](#-por-que-existe)
-- [Os 4 pilares](#-os-4-pilares)
-- [Filosofia](#-filosofia)
-- [Estrutura](#-estrutura)
-- [Quick start](#-quick-start)
-- [Hooks](#-hooks)
-- [Skills](#-skills)
-- [Permissões](#-permissões-settingsjson)
-- [Distribuir como plugin](#-distribuir-como-plugin)
-- [Novidades da 2.0](#-novidades-da-20)
-- [Decisões de escopo](#-decisões-de-escopo)
+- [🎯 O que é e Por que Existe](#-o-que-é-e-por-que-existe)
+- [🏛️ A Arquitetura dos 5 Pilares](#️-a-arquitetura-dos-5-pilares)
+- [🎭 Divisão de Papéis Multi-Harness](#-divisão-de-papéis-multi-harness)
+- [🌊 Protocolo de Desenvolvimento em Waves](#-protocolo-de-desenvolvimento-em-waves)
+- [🚀 Quick Start (Começando um Projeto Novo)](#-quick-start-começando-um-projeto-novo)
+- [🧠 Segundo Cérebro Compartilhado (Muninn MCP)](#-segundo-cérebro-compartilhado-muninn-mcp)
+- [🗂️ Estrutura de Pastas](#️-estrutura-de-pastas)
+- [🛡️ Guardrails e Hooks Determinísticos](#️-guardrails-e-hooks-determinísticos)
+- [🛠️ Comandos do Makefile](#️-comandos-do-makefile)
 
 ---
 
-## 🎯 Por que existe
+## 🎯 O que é e Por que Existe
 
-Todo projeto novo repete a mesma configuração de Claude Code: definir o que ele
-pode rodar sem perguntar, garantir que segredos nunca vazem, padronizar formatação
-e ensinar as convenções do time. Este pack entrega isso pronto — **copie para a raiz
-do projeto e comece com guardrails de segurança e qualidade desde o primeiro prompt.**
+Ao trabalhar com múltiplos agentes de IA (**Antigravity**, **Claude Code** e **Codex**), todo projeto novo sofre dos mesmos 3 gargalos:
 
----
+1. **Amnésia Cruzada:** O que um harness decide em uma sessão é ignorado pelo outro.
+2. **Duplicação de Regras:** Ter que manter e sincronizar arquivos de regras diferentes (`CLAUDE.md`, `GEMINI.md`, prompts soltos).
+3. **Colisão de Arquivos:** Rodar agentes simultâneos sobre a mesma árvore de arquivos gera race conditions e merges quebrados.
 
-## 🏛️ Os 4 pilares
-
-| Pilar | Arquivo | Papel |
-|-------|---------|-------|
-| ⚙️ **Configuração** | `.claude/settings.json` | Permissões, env e attribution — o que é **determinístico**. |
-| 🪝 **Hooks** | `.claude/hooks/*.sh` | Automações que rodam *toda vez, sem exceção* (lint, format, guardrails). |
-| 🧠 **Skills** | `.claude/skills/*/SKILL.md` | Conhecimento de domínio com *progressive disclosure* — carregado só quando relevante. |
-| 📦 **Plugin** | `.claude-plugin/plugin.json` | Empacotamento opcional para distribuir tudo num marketplace privado. |
+O **Multi-Harness Starter Pack** resolve isso na raiz. Ele fornece um **contrato canônico universal (`AGENTS.md`)**, pontes específicas para cada harness, uma esteira padronizada de **desenvolvimento em Waves (`NOTES.md`)** e integração nativa com o **Segundo Cérebro (MCP Muninn)**.
 
 ---
 
-## 💡 Filosofia
-
-> Três regras guiam cada decisão deste pack:
-
-1. **`settings.json` para o determinístico.** Permissões, attribution, model.
-   Nunca escreva *"NEVER faça X"* no `CLAUDE.md` se dá pra enforçar via setting ou hook.
-2. **Hooks para o que precisa rodar 100% das vezes.** Formatação, secrets scan,
-   bloqueio de paths. Hooks são determinísticos; `CLAUDE.md` é apenas conselho.
-3. **Skills para conhecimento sob demanda.** Convenções de DDD/VSA, checklists de
-   segurança, padrões de commit. Carregadas só quando o contexto pede.
-
----
-
-## 🗂️ Estrutura
+## 🏛️ A Arquitetura dos 5 Pilares
 
 ```
-seu-projeto/
-├── .claude/
-│   ├── settings.json                  # ✅ Versionado no git — vale pro time inteiro
-│   ├── settings.local.json.example    # 👤 Modelo de preferências pessoais (gitignored)
-│   ├── hooks/
-│   │   ├── pre-bash-guard.sh           # 🛡️  Bloqueia comandos destrutivos
-│   │   ├── pre-commit-secrets.sh       # 🔍 Escaneia secrets antes de commit/push
-│   │   ├── post-edit-format.sh         # 🎨 Formata + lint após cada edição
-│   │   └── block-secrets.sh            # 🔒 Guard extra p/ paths sensíveis (opcional)
-│   └── skills/
-│       ├── code-review-b2/SKILL.md     # 👀 Revisão padrão B2 Tech (VSA + DDD)
-│       ├── security-check/SKILL.md     # 🔐 Auditoria Security by Design (OWASP)
-│       ├── commit/SKILL.md             # ✍️  Conventional commits assistidos
-│       └── frontend-design/SKILL.md    # 🎭 Frontend distinto, sem "AI slop"
-├── .claude-plugin/
-│   └── plugin.json                     # 📦 Metadados do plugin b2tech-starter
-├── .mcp.json                           # 🔌 MCP servers do projeto (vazio por padrão)
-├── .gitignore
-└── CLAUDE.md                           # 📝 Contexto do projeto (curto, humano)
+                            ┌────────────────────────┐
+                            │      AGENTS.md         │
+                            │  Contrato Universal    │
+                            └──────────┬─────────────┘
+                                       │
+            ┌──────────────────────────┼──────────────────────────┐
+            ▼                          ▼                          ▼
+   ┌─────────────────┐        ┌─────────────────┐        ┌─────────────────┐
+   │    CLAUDE.md    │        │    GEMINI.md    │        │      Codex      │
+   │  (Claude Code)  │        │  (Antigravity)  │        │   (CLI/Editor)  │
+   └────────┬────────┘        └────────┬────────┘        └────────┬────────┘
+            │                          │                          │
+            └──────────────────────────┼──────────────────────────┘
+                                       ▼
+                       ┌───────────────────────────────┐
+                       │      MCP MUNINN (Memória)     │
+                       │   Decisões · Lições · Regras  │
+                       └───────────────────────────────┘
 ```
+
+| Pilar | Arquivo | Função |
+| :--- | :--- | :--- |
+| 📜 **Contrato Canônico** | `AGENTS.md` | O documento central de verdade que **todos os harnesses leem**. Define ética de engenharia (cautela > velocidade, cirurgia de código, sem dead code). |
+| 🪐 **Ponte Antigravity** | `GEMINI.md` + `.agents/` | Apontador do Antigravity IDE. Expõe skills e regras contextuais para o ecossistema Google. |
+| 🧠 **Ponte Claude Code** | `CLAUDE.md` + `.claude/` | Apontador enxuto do Claude Code, integrando hooks de segurança e comandos essenciais de build/test. |
+| 🌊 **Protocolo de Waves** | `NOTES.md` | Rastreamento da entrega em fatias ordenadas (Wave 0 Spec → Wave 1 Core → Wave 2 UI). Evita amnésia no `/compact`. |
+| 🔌 **Barramento MCP** | `.mcp.json` | Ponto de conexão unificado com o **Muninn** e ferramentas de infraestrutura. |
 
 ---
 
-## 🚀 Quick start
+## 🎭 Divisão de Papéis Multi-Harness
 
+Cada harness é excelente em uma etapa do ciclo de desenvolvimento:
+
+| Harness | Superpoder | Casos de Uso Ideais |
+| :--- | :--- | :--- |
+| 🪐 **Antigravity (AGY)** | Visão fullstack, orquestração visual, testes com browser nativo | Construção de UI/Design System, validação de responsividade com browser subagent, inspeção interativa de diffs. |
+| 🧠 **Claude Code** | Raciocínio arquitetural profundo, depuração intrincada | Desenho de schemas, modelagem DDD/VSA, resolução de bugs difíceis, auditorias de segurança e code review estrito. |
+| ⚡ **Codex** | Execução cirúrgica, geração em lote no terminal | Automação de migrações, scripts de seed, geração rápida de testes unitários repetitivos. |
+
+> [!TIP]
+> **Concorrência sem colisão:** Se precisar rodar Claude Code e Antigravity ao mesmo tempo, use **Git Worktrees** (`make worktree-new NAME=minha-wave`). Nunca rode dois agentes na mesma pasta simultaneamente!
+
+---
+
+## 🌊 Protocolo de Desenvolvimento em Waves
+
+O fluxo canônico para entregar projetos sem alucinação e sem perda de contexto:
+
+```
+[Wave 0: Spec & DoD] ──► [Wave 1: Core Backend] ──► [Wave 2: Frontend & E2E] ──► [Hand-off / Deploy]
+        │                           │                           │
+  Definir regras              Migrations, APIs            Telas, Componentes            Check verde
+  e validar premissas         e testes unitários          e validação no browser        e registro Muninn
+```
+
+1. **Wave 0 (Spec & DoD):** No início da tarefa, preencha o `NOTES.md`. Defina claramente o que será construído, as premissas e a Definition of Done (DoD).
+2. **Execução Fatiada:** Cada harness executa a wave na sua especialidade, marcando os checkboxes no `NOTES.md`.
+3. **Hand-off limpo:** Ao fechar uma wave, registre no log do `NOTES.md`, salve lições duráveis no Muninn e rode `/compact`. O próximo harness re-ancora instantaneamente.
+
+---
+
+## 🚀 Quick Start (Começando um Projeto Novo)
+
+Pegou um projeto novo ou vai começar do zero? Siga este roteiro de 3 minutos:
+
+### 1. Copie o starter pack para o seu novo projeto
 ```bash
-# 1. Clone o pack
-git clone https://github.com/brunobracaioli/claude-code-starter-pack.git
-
-# 2. Copie a config para a raiz do seu projeto
-cp -r claude-code-starter-pack/.claude         seu-projeto/
-cp -r claude-code-starter-pack/.claude-plugin  seu-projeto/   # opcional (plugin)
-cp    claude-code-starter-pack/.mcp.json       seu-projeto/   # opcional (MCP)
-cp    claude-code-starter-pack/CLAUDE.md       seu-projeto/
-
-# 3. Torne os hooks executáveis
-chmod +x seu-projeto/.claude/hooks/*.sh
-
-# 4. (Opcional) Crie suas preferências locais a partir do exemplo
-cp seu-projeto/.claude/settings.local.json.example \
-   seu-projeto/.claude/settings.local.json
-
-# 5. Rode
-cd seu-projeto && claude
+# Clone ou copie para a raiz do seu novo repositório
+cp -a /caminho/para/multi-harness-starter-pack/. /meu-novo-projeto/
+cd /meu-novo-projeto
 ```
 
-> 🐧 **Dependência:** os hooks usam [`jq`](https://jqlang.github.io/jq/) para ler o
-> JSON do stdin. Instale com `sudo apt install jq` (Debian/Ubuntu/WSL) ou `brew install jq`.
+### 2. Preencha os campos da stack
+No arquivo `CLAUDE.md`, defina a stack do seu projeto:
+```markdown
+## Stack do Projeto
+- **Backend:** Node.js 22 + Fastify + Prisma
+- **Frontend:** Next.js 15 (App Router) + TailwindCSS
+- **Banco / Infra:** PostgreSQL + Supabase
+- **Memória:** MCP Muninn
+```
 
-> 📝 **Customize o `CLAUDE.md`:** ele vem como template (`# <Nome do Projeto>`).
-> Preencha stack, comandos e estrutura — mantenha curto e humano.
+### 3. Inicie a Wave 0 no `NOTES.md`
+Abra o `NOTES.md` e descreva o objetivo da sprint na seção **Wave 0**.
+
+### 4. Comece a codar no seu harness preferido
+* No **Antigravity**: Abra a pasta no IDE e interaja pelo painel de Chat/Agent.
+* No **Claude Code**: Execute `claude` no terminal.
+* No **Codex**: Invoque comandos de geração rápida.
 
 ---
 
-## 🪝 Hooks
+## 🧠 Segundo Cérebro Compartilhado (Muninn MCP)
 
-Automações wired em `settings.json`. Todas seguem o mesmo contrato: leem JSON do
-stdin, **`exit 0` permite**, **`exit 2` bloqueia** e devolve o stderr ao Claude
-como contexto para auto-correção.
+O repositório já vem preparado para conectar-se ao **MCP Muninn** via `.mcp.json`:
 
-| Hook | Evento | Matcher | O que faz |
-|------|--------|---------|-----------|
-| `pre-bash-guard.sh` | `PreToolUse` | `Bash` | Bloqueia `rm -rf /`, fork bombs, `mkfs`, `DROP/TRUNCATE`, `curl \| sh`, `git push --force` em `main`, e remoção de arquivos sensíveis. |
-| `pre-commit-secrets.sh` | `PreToolUse` | `Bash` | Em `git commit`/`push`, escaneia arquivos *staged* por chaves AWS/GitHub/OpenAI/Anthropic/Slack/Meta e private keys. |
-| `post-edit-format.sh` | `PostToolUse` | `Write \| Edit \| NotebookEdit` | Formata e dá lint após edições: Prettier+ESLint (JS/TS), Ruff (Python), `jq` (JSON), `gofmt` (Go), `rustfmt` (Rust). |
-| `block-secrets.sh` | — | — | **Não wired por padrão.** Guard mais agressivo: bloqueia qualquer tool tocando `.env`, `secrets/`, chaves SSH, `~/.aws`, `~/.config/gcloud`, etc. |
-
-<details>
-<summary><b>Como ativar o <code>block-secrets.sh</code></b></summary>
-
-<br>
-
-É um guard opcional, mais amplo que os defaults. Para ativá-lo em operações de
-arquivo, adicione-o ao bloco `PreToolUse` do `settings.json`:
-
-```jsonc
+```json
 {
-  "matcher": "Write|Edit|Read",
-  "hooks": [
-    {
-      "type": "command",
-      "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/block-secrets.sh",
-      "timeout": 10
+  "$schema": "https://json.schemastore.org/mcp.json",
+  "mcpServers": {
+    "muninn": {
+      "type": "sse",
+      "url": "https://muninn.fulltech.app/mcp",
+      "headers": {
+        "Authorization": "Bearer ${MUNINN_API_KEY}"
+      }
     }
-  ]
+  }
 }
 ```
 
-</details>
+### Regras de Ouro com o Muninn:
+* **Antes de codificar:** O agente busca notas anteriores com `muninn_search` e `muninn_recall`.
+* **Ao finalizar tarefa substancial:** Se aprendeu algo reutilizável (padrão, decisão técnica, lição aprendida), grava no Muninn com a tag do universo correspondente (`universe:<nome>`).
 
 ---
 
-## 🧠 Skills
+## 🗂️ Estrutura de Pastas
 
-Carregadas via *progressive disclosure* — o Claude lê o `SKILL.md` só quando o
-contexto da conversa bate com a `description`.
-
-| Skill | Quando invocar | Cobre |
-|-------|----------------|-------|
-| 👀 **`code-review-b2`** | *"revise o código"*, *"code review"*, fim de feature/PR | Vertical Slice + DDD, Security by Design, qualidade Python/Flask + Next.js/TS, testes. Output com `🔴 Blocker` / `🟡 Major` / `🟢 Nit` + decisão. |
-| 🔐 **`security-check`** | *"audite a segurança"*, antes de subir pra prod | OWASP Top 10, secrets, AuthN/AuthZ, supply chain, logs. Findings `🔥 CRÍTICO`→`🔵 INFO` com ameaça → impacto → fix. |
-| ✍️ **`commit`** | `/commit` (ou peça pra commitar) | Stage + mensagem em Conventional Commits a partir do diff. **Não dá push** — você decide quando. |
-| 🎭 **`frontend-design`** | *"crie um componente/página/UI"* | Frontend distinto e production-grade, fugindo da estética genérica de IA. |
-
----
-
-## 🔐 Permissões (`settings.json`)
-
-Defense in depth desde o primeiro prompt — três níveis de permissão:
-
+```text
+multi-harness-starter-pack/
+├── AGENTS.md                          # 🌟 Contrato canônico universal (AGY + Claude + Codex)
+├── CLAUDE.md                          # 🧠 Entrypoint do Claude Code (comandos e stack)
+├── GEMINI.md                          # 🪐 Entrypoint do Antigravity IDE (escopo e browser)
+├── NOTES.md                           # 🌊 Rastreamento de Waves, DoD e log de Hand-off
+├── Makefile                           # 🛠️ Comandos padronizados (install, dev, lint, test, worktree)
+├── .mcp.json                          # 🔌 Configuração de MCP Servers (Muninn centralizado)
+├── .gitignore                         # 🛡️ Blindagem estrita (bloqueio de .env, chaves e caches)
+├── .claude/
+│   ├── settings.json                  # ⚙️ Permissões determinísticas e env flags
+│   ├── hooks/                         # 🪝 Scripts que rodam 100% das vezes
+│   │   ├── pre-bash-guard.sh          # 🛡️ Bloqueia comandos destrutivos (rm -rf, sudo, force push)
+│   │   ├── pre-commit-secrets.sh      # 🔍 Varredura de credenciais antes do commit
+│   │   ├── post-edit-format.sh        # 🎨 Formatação e lint automático pós-edição
+│   │   └── block-secrets.sh           # 🔒 Proteção de arquivos confidenciais
+│   └── skills/                        # 🧠 Especialistas sob demanda (compartilhados)
+│       ├── code-review-b2/            # Revisão estrita de arquitetura
+│       ├── security-check/            # Auditoria Security by Design / OWASP
+│       ├── commit/                    # Conventional Commits assistidos
+│       └── frontend-design/           # Design System apurado (anti-AI slop)
+└── .agents/                           # 🪐 Customizações nativas do Antigravity
+    ├── rules/                         # Regras contextuais do IDE
+    └── skills/                        # Symlinks para .claude/skills/ (zero duplicação!)
 ```
-✅ allow  →  roda sem perguntar
-   read/glob/grep, git status|diff|log|branch, lint/typecheck/test, ruff, mypy, pytest
 
-❓ ask    →  pede confirmação
-   git push, git commit, npm/pnpm publish, WebFetch
+---
 
-🚫 deny   →  bloqueado sempre
-   ler/editar .env e .env.*, secrets/**, *.pem, *.key, credentials.json,
-   service-account*.json · sudo, rm -rf /, curl|sh, wget|sh, ssh
+## 🛡️ Guardrails e Hooks Determinísticos
+
+Nenhum agente deve ter permissão para destruir o ambiente ou comitar segredos. O starter pack aplica regras no `.claude/settings.json` e hooks em `.claude/hooks/`:
+
+* **Comandos Bloqueados:** `sudo`, `rm -rf /`, `curl ... | sh`, `git push --force main`.
+* **Arquivos Bloqueados:** Leitura/escrita em `.env*`, `secrets/**`, `*.pem`, `*.key`, `id_rsa*`.
+* **Formatação Automática:** O hook `post-edit-format.sh` garante que todo arquivo modificado passe pelo linter do projeto imediatamente.
+
+---
+
+## 🛠️ Comandos do Makefile
+
+Use o `Makefile` para manter uma interface uniforme em qualquer máquina:
+
+```bash
+make help              # Lista todos os comandos documentados
+make install           # Instala dependências (detecta pnpm/npm, pip/poetry)
+make dev               # Sobe o servidor de desenvolvimento
+make lint              # Executa checagem estática (ruff, eslint)
+make typecheck         # Executa checagem rigorosa de tipos (tsc, mypy)
+make test              # Roda a suite de testes automatizados
+make test-watch        # Roda testes em modo watch
+
+# Helpers para Multi-Harness e Concorrência Segura
+make worktree-new NAME=wave-1-claude   # Cria branch e worktree isolado
+make worktree-list                     # Lista worktrees ativos
+make worktree-clean                    # Limpa worktrees órfãos
 ```
-
-Outros defaults: `cleanupPeriodDays: 14`, `enableAllProjectMcpServers: false`,
-e tráfego não-essencial desligado (`CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC`).
-
-> 👤 **Preferências pessoais** (spinner verbs, output style, permissões extras)
-> vão em `settings.local.json` — gitignored. Use o `.example` como ponto de partida.
-
----
-
-## 📦 Distribuir como plugin
-
-O `.claude-plugin/plugin.json` empacota hooks e skills como o plugin
-**`b2tech-starter`**, pronto para um marketplace privado do time. Assim, em vez de
-copiar arquivos manualmente, cada projeto instala o pack com um comando.
-
----
-
-## ✨ Novidades da 2.0
-
-Mapeado direto dos commits desde o `first commit`:
-
-- 🆕 **Skill `commit`** — Conventional Commits assistidos a partir do diff.
-- 🆕 **Skill `frontend-design`** — UIs distintas, sem estética genérica de IA.
-- 🆕 **Hook `block-secrets.sh`** — guard opcional, mais agressivo, para paths sensíveis.
-- 🆕 **`.mcp.json`** — ponto de entrada para MCP servers do projeto.
-- 🔧 **`settings.json` revisado** — permissões `allow`/`ask`/`deny` mais granulares,
-  `autoMemory`/`autoDream` ligados, env de privacidade.
-- 🔧 **`pre-bash-guard.sh` refinado** — padrões ancorados para reduzir falso-positivo
-  (`rm -rf /` literal não bloqueia `rm -rf /tmp/...`).
-- 🗂️ **Reorganização** — arquivos movidos do subdiretório para a raiz do repositório.
-
----
-
-## 🧭 Decisões de escopo
-
-O que ficou **de fora de propósito**, e por quê:
-
-- **Subagentes (`agents/`)** → adicione conforme necessidade real; evite genéricos.
-- **Slash commands dedicados (`commands/`)** → skills são mais flexíveis e suportam
-  *supporting files*.
-- **MCP servers configurados** → projeto-específico; `.mcp.json` vem vazio, pronto
-  para você preencher.
-
-> **Stack-aware, não stack-locked.** Os hooks e skills assumem Python/Flask +
-> Next.js/TypeScript em GCP, mas o `post-edit-format.sh` já cobre Go e Rust. Ajuste
-> os comandos de lint/format conforme a stack do seu projeto.
 
 ---
 
 <div align="center">
 
-**[Bruno Bracaioli](https://b2tech.io)** · MIT License
-
-*Feito para começar projetos com segurança e qualidade desde o primeiro prompt.*
+Desenvolvido para engenharia ágil e governança agêntica.  
+**Cautela sobre velocidade · Cirurgia sobre refatoração · Memória unificada.**
 
 </div>
