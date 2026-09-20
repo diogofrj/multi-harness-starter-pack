@@ -1,11 +1,11 @@
 {
   "$schema": "https://json.schemastore.org/mcp.json",
   "mcpServers": {
-    "muninn": {
+    "fulltech-memory": {
       "type": "sse",
-      "url": "https://muninn.fulltech.app/mcp",
+      "url": "${FULLTECH_MEMORY_MCP_URL}",
       "headers": {
-        "Authorization": "Bearer ${MUNINN_API_KEY}"
+        "Authorization": "Bearer ${FULLTECH_MEMORY_API_KEY}"
       }
     }
   }

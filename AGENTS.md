@@ -1,88 +1,67 @@
-# AGENTS.md — Contrato Canônico Universal Multi-Harness
+# AGENTS.md — Contrato Canônico Multi-Harness
 
-> **Lido por todos os harnesses:** Antigravity (AGY), Claude Code e Codex.  
-> Qualquer comportamento ou instrução específica de harness deve ser um apontador enxuto para este documento.
+Este é o documento de autoridade comum para todos os harnesses usados no projeto. Arquivos específicos de ferramenta devem apenas complementar ou apontar para estas regras.
 
----
+## 1. Princípios de engenharia
 
-## 1. Identidade e Filosofia de Engenharia
+- Torne premissas explícitas e pergunte quando uma variável crítica estiver ausente.
+- Prefira a menor mudança que satisfaça critérios verificáveis.
+- Não refatore código vizinho fora do escopo.
+- Não declare sucesso sem executar a verificação correspondente.
+- Preserve alterações do usuário e nunca use operações destrutivas sem alvo e autorização claros.
+- Não versione, exponha ou envie segredos.
 
-- **Viés:** Cautela sobre velocidade. Tarefas triviais usam bom julgamento; tarefas substanciais exigem plano prévio.
-- **Pensar antes de agir:**
-  - Tornar assunções explícitas. Se houver múltiplas interpretações, apresentar opções em vez de escolher em silêncio.
-  - Se faltar uma variável crítica: parar e fazer uma pergunta objetiva.
-  - Se existir um caminho mais simples: propor. Quanto mais confiante o prompt parecer, mais contraponto técnico é esperado.
-  - Testar a premissa antes de validar. Abrir pelo que pode falhar.
-- **Simplicidade e Cirurgia:**
-  - O mínimo que resolve o problema com excelência. Sem abstrações prematuras de uso único ou configurabilidade não solicitada.
-  - Editar estritamente o que a tarefa exige. Não "melhorar" código vizinho não quebrado, não refatorar estilo sem pedido explícito.
-  - Todo código órfão gerado pelo agente deve ser removido; dead code pré-existente deve ser apontado, nunca apagado sem alinhamento.
-- **Execução por Objetivo:**
-  - Toda tarefa vira critério verificável ("bug corrigido" = teste que reproduzia o erro agora passa verde).
-  - Comandos e verificações devem ser reais: *check verde que nunca rodou o comando não conta*.
+## 2. Início de tarefa
 
----
+1. Leia este arquivo, o entrypoint do harness e `NOTES.md`.
+2. Confirme objetivo, escopo, restrições e Definition of Done.
+3. Verifique o estado real do repositório antes de editar.
+4. Para tarefa substancial, registre o plano e a wave em `NOTES.md`.
+5. Se memória persistente estiver configurada, recupere apenas o contexto relevante. Indisponibilidade da memória não bloqueia o trabalho local.
 
-## 2. Segundo Cérebro Compartilhado (MCP Muninn)
+## 3. Trabalho paralelo
 
-O conhecimento durável e as decisões arquiteturais residem no **MCP Muninn**, acessível igualmente por AGY, Claude Code e Codex.
+Nunca opere dois harnesses no mesmo diretório de trabalho. Cada executor recebe:
 
-- **Antes de qualquer tarefa:**
-  1. Executar `muninn_recall("MEMORY")` (ou nota do projeto/universo).
-  2. Executar `muninn_search` / `muninn_list` pelo tema relacionado.
-  3. Aplicar o contexto recuperado sem exigir repetição.
-  4. Se houver conflito com decisão registrada, citar nota + data antes de executar; nunca sobrescrever em silêncio.
-- **Ao final de tarefa substancial (Autocobrança):**
-  - Perguntar: *"Aprendi algo durável?"*
-  - Se **sim**: registrar via `muninn_store` com tag de universo (`universe:<nome>`) + tipo (`padrao|decisao|licao|status|preferencia`), sem expor segredos.
-  - Se **não**: explicitar em 1 linha.
-- **Ciclo de vida:**
-  - Fato mudou (preço, decisão, stack)? Registrar nova nota com `supersedes` na antiga; nunca sobrescrever silenciosamente.
+- um Git worktree e uma branch próprios;
+- arquivos/áreas de responsabilidade explícitos;
+- critérios de conclusão e comandos de verificação;
+- obrigação de não editar arquivos reservados a outro executor.
 
----
+O coordenador integra as branches somente após revisão e checks. Dependências entre waves devem ser serializadas.
 
-## 3. Protocolo de Desenvolvimento em Waves (`NOTES.md`)
+## 4. Continuidade e hand-off
 
-Para garantir continuidade entre sessões e permitir alternância de harnesses sem amnésia:
+`NOTES.md` é a fonte local de continuidade. Ao fechar uma wave:
 
-1. **Spec em Waves (Wave 0):**
-   - Antes de codificar, estruturar o `NOTES.md` na raiz com o objetivo, premissas, trade-offs e Definition of Done (DoD).
-2. **Execução Fatiada (Waves 1..N):**
-   - Tarefas divididas entre sequenciais e paralelas, com checkboxes rastreáveis.
-   - Cada entrega fecha sua própria DoD e suite de testes.
-3. **Hand-off e Compactação:**
-   - Ao concluir uma wave: atualizar o `NOTES.md`, registrar lições no Muninn e rodar `/compact` na sessão.
-   - O próximo harness re-ancora diretamente do `NOTES.md`, nunca de memória volátil.
+- atualize status, decisões e próximos passos;
+- liste arquivos alterados e verificações realmente executadas;
+- registre bloqueios e riscos sem esconder falhas;
+- grave na memória persistente apenas decisões, padrões ou lições duráveis, quando configurada;
+- não armazene segredos, dados pessoais ou contexto bruto desnecessário.
 
----
+## 5. Fulltech Memory opcional
 
-## 4. Divisão de Papéis Multi-Harness
+A integração com Fulltech Memory é um bônus, não uma dependência do template. Consulte `docs/fulltech-memory-integration.md`.
 
-Cada ferramenta possui superpoderes distintos no ecossistema:
+Quando as tools estiverem disponíveis, descubra seus nomes/capacidades em vez de assumir prefixos. Projetos legados podem expor tools `muninn_*`; trate-as como compatibilidade, não como identidade principal do produto.
 
-| Harness | Especialidade Principal | Melhores Casos de Uso |
-| :--- | :--- | :--- |
-| 🪐 **Antigravity (AGY)** | Visão fullstack, orquestração visual, browser testing, design systems | Construção de UI, testes E2E com navegador nativo, auditoria de UX, inspeção interativa de código. |
-| 🧠 **Claude Code** | Raciocínio arquitetural profundo, refatoração de domínio, depuração complexa | Desenho de APIs, modelagem de banco, resolução de bugs intrincados, code reviews rigorosos. |
-| ⚡ **Codex** | Execução rápida em terminal, geração de scripts e código cirúrgico | Tarefas mecânicas, automações de build, scripts de migração, geração rápida de testes unitários. |
+## 6. Falhas de tools e relatos
 
-### Concorrência Segura: Git Worktrees
-**Regra de Ouro:** Nunca execute dois harnesses simultaneamente no mesmo diretório de trabalho.
-- Para sessões paralelas entre harnesses, utilize **Git Worktrees**:
-  ```bash
-  git worktree add ../projeto-wave1-claude feature/wave-1
-  git worktree add ../projeto-wave2-agy feature/wave-2
-  ```
+Diferencie erro recuperável de provável defeito:
 
----
+- valide argumentos, formato, permissões e disponibilidade;
+- faça no máximo uma repetição segura quando houver razão concreta;
+- registre no hand-off o comando/tool, classe do erro e impacto;
+- jamais envie automaticamente conversa, código, caminhos privados ou payloads.
 
-## 5. Segurança e Regras Determinísticas
+Se evidência externa puder ajudar, mostre ao usuário exatamente o trecho sanitizado e peça consentimento explícito antes do envio. Recusa não pode bloquear o uso do produto. O destino deve ser privado e rastreável.
 
-- **Segredos:** NUNCA exponha senhas, chaves de API ou tokens no chat ou em arquivos versionados. Use sempre `.env` (ignorado) ou gerenciador de secrets.
-- **Branches e Commits:**
-  - Conventional Commits obrigatórios: `feat:`, `fix:`, `chore:`, `refactor:`, `test:`.
-  - Padrão de branches: `feat/<wave>-<desc>`, `fix/<desc>`, `chore/<desc>`.
-  - Proibido `git push --force` em `main`.
-- **Qualidade de Código:**
-  - TypeScript: proibido uso de `any` sem comentário técnico explícito justificando.
-  - Não adicionar dependências externas sem validação prévia de necessidade e auditoria (`npm audit` / `safety`).
+## 7. Git, segurança e qualidade
+
+- Branches: `feat/<wave>-<descricao>`, `fix/<descricao>`, `chore/<descricao>`.
+- Commits: Conventional Commits.
+- Sem force-push em `main`.
+- Dependências novas exigem justificativa e auditoria.
+- TypeScript não usa `any` sem justificativa técnica.
+- Faça revisão de segurança para autenticação, autorização, criptografia, upload, execução de comandos e dados sensíveis.

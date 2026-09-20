@@ -1,67 +1,63 @@
-# NOTES.md — Rastreamento de Desenvolvimento em Waves
+# NOTES.md — Estado e hand-off
 
-> **Documento de continuidade:** Atualizado a cada entrega de Wave e antes de `/compact`.  
-> Todo harness (Antigravity, Claude Code ou Codex) deve ler este arquivo ao iniciar uma nova sessão para ancorar o contexto.
+Todos os harnesses devem ler este arquivo no início e atualizá-lo ao concluir uma wave.
 
----
+## Projeto
 
-## 1. Visão do Projeto e Objetivo Atual
+- **Repositório:** <owner/repo>
+- **Objetivo:** <resultado esperado>
+- **Status:** Wave 0 — especificação
+- **Coordenador:** <harness/pessoa>
 
-- **Repositório:** `<nome-do-repositorio>`
-- **Objetivo Central:** 
-- **Status Geral:** `Wave 0 — Especificação e Alinhamento`
+## Decisões ativas
 
----
+- [x] `AGENTS.md` é o contrato canônico.
+- [x] Um worktree por executor simultâneo.
+- [ ] Stack e arquitetura validadas.
+- [ ] Memória persistente: desativada / Fulltech Memory / outro.
 
-## 2. Premissas e Decisões Ativas
+## Waves
 
-- [x] Contrato canônico estabelecido em [AGENTS.md](AGENTS.md).
-- [x] Memória persistente centralizada no Muninn.
-- [ ] *Adicione decisões arquiteturais ou técnicas aqui...*
+### Wave 0 — Especificação e arquitetura
 
----
-
-## 3. Backlog de Waves
-
-### Wave 0: Especificação, Arquitetura e Contrato
-- **Objetivo:** Definir requisitos, modelagem de dados, stack e validar premissas com o usuário.
-- **DoD (Definition of Done):**
-  - [ ] Requisitos e fluxos mapeados.
-  - [ ] Estrutura de pastas e contratos de API definidos.
-  - [ ] Validação com o usuário realizada.
-- **Tarefas:**
-  - [ ] Mapear entidades do sistema
-  - [ ] Validar integrações externas e variáveis de ambiente necessárias
-
----
-
-### Wave 1: Fundação e Core Backend
-- **Objetivo:** Subir infraestrutura mínima, banco de dados e regras de negócio essenciais.
+- **Objetivo:** <objetivo>
+- **Responsável:** <responsável>
+- **Worktree/branch:** <caminho> / <branch>
+- **Arquivos reservados:** <paths>
 - **DoD:**
-  - [ ] Migrações rodando e testadas.
-  - [ ] Endpoints ou casos de uso principais cobertos por testes unitários (`make test`).
-- **Tarefas:**
-  - [ ] Implementar migrations e schemas
-  - [ ] Implementar repositórios / serviços do core
-  - [ ] Criar testes unitários
+  - [ ] Requisitos e riscos documentados.
+  - [ ] Contratos e limites definidos.
+  - [ ] Plano de testes definido.
 
----
+### Wave 1 — Core
 
-### Wave 2: Frontend, Interface e Integração
-- **Objetivo:** Interface com design apurado, consumo das APIs e estados interativos.
+- **Objetivo:** <objetivo>
+- **Responsável:** <responsável>
+- **Worktree/branch:** <caminho> / <branch>
+- **Arquivos reservados:** <paths>
 - **DoD:**
-  - [ ] UI responsiva, sem placeholders quebrados.
-  - [ ] Fluxo principal testado via browser automation.
-- **Tarefas:**
-  - [ ] Criar componentes base
-  - [ ] Conectar queries/mutations
-  - [ ] Validar UX no Antigravity
+  - [ ] Implementação concluída.
+  - [ ] Testes relevantes passando.
+  - [ ] Evidências registradas.
 
----
+### Wave 2 — Integração e experiência
 
-## 4. Log de Hand-off entre Harnesses
+- **Objetivo:** <objetivo>
+- **Responsável:** <responsável>
+- **Worktree/branch:** <caminho> / <branch>
+- **Arquivos reservados:** <paths>
+- **DoD:**
+  - [ ] Fluxo principal e erros validados.
+  - [ ] Acessibilidade/responsividade verificadas quando aplicável.
+  - [ ] Revisão pronta para integração.
 
-| Data / Hora | Harness | Wave / Tarefa | O que foi feito | Próximo Passo |
-| :--- | :--- | :--- | :--- | :--- |
-| *Ex: 2026-09-07* | 🧠 Claude Code | W0: Arquitetura | Criada a modelagem relacional em `schema.sql` | 🪐 AGY: Criar componentes de tela |
-| *Ex: 2026-09-07* | 🪐 Antigravity | W2: Telas | Implementado formulário com validação Zod | ⚡ Codex: Escrever testes unitários |
+## Hand-offs
+
+| Data UTC | Harness | Wave | Commit/branch | Checks executados | Resultado | Próximo passo |
+|---|---|---|---|---|---|---|
+| <data> | <harness> | <wave> | <ref> | <comandos> | <resultado> | <ação> |
+
+## Bloqueios e incidentes
+
+| Data UTC | Origem | Classe | Impacto | Tentativas seguras | Consentimento/evidência | Estado |
+|---|---|---|---|---|---|---|

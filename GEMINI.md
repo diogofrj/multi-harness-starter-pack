@@ -1,30 +1,19 @@
-# GEMINI.md — Antigravity Harness Entrypoint
+# GEMINI.md — Antigravity/Gemini Entrypoint
 
-> Arquivo de inicialização do **Google Antigravity (AGY)** para este repositório.
-> O contrato canônico universal de engenharia, conduta e arquitetura está em [AGENTS.md](AGENTS.md).
+Leia primeiro [AGENTS.md](AGENTS.md) e [NOTES.md](NOTES.md).
 
----
+## Projeto
 
-## 1. Contexto do Harness
+- **Produto:** <nome>
+- **Papel preferencial:** UI, integração fullstack, browser testing e inspeção visual.
+- **Memória persistente:** opcional; veja [docs/fulltech-memory-integration.md](docs/fulltech-memory-integration.md)
 
-- **Harness:** Antigravity IDE / Antigravity 2.0
-- **Papel primário:** Orquestração de tarefas fullstack, engenharia de frontend/UI, automação de testes com navegador integrado, inspeção visual de diffs e planejamento assistido.
-- **Memória de longo prazo:** [MCP Muninn](.mcp.json) (buscar antes de agir; registrar aprendizado durável ao finalizar).
+## Operação
 
----
-
-## 2. Instruções de Operação no Antigravity
-
-1. **Início de Tarefa:**
-   - Leia as convenções locais em [CLAUDE.md](CLAUDE.md) para comandos da stack (`make dev`, `make test`, etc.).
-   - Consulte o estado atual da sprint/entrega no [NOTES.md](NOTES.md).
-   - Se a tarefa for complexa ou envolver decisões estruturais, ative o **Planning Mode** e gere um plano antes de alterar arquivos.
-2. **Skills e Customizações:**
-   - As skills do projeto estão centralizadas em `.claude/skills/` e espelhadas em `.agents/skills/`.
-   - Invoque skills especializadas via `/` ou progressive disclosure (ex.: `code-review-b2`, `security-check`, `frontend-design`).
-3. **Execução e Verificação:**
-   - Execute comandos determinísticos preferencialmente via `Makefile` (`make lint`, `make typecheck`, `make test`).
-   - Use o browser subagent nativo para validar páginas web, responsividade e fluxos de usuário quando aplicável.
-4. **Fechamento de Ciclo:**
-   - Atualize os checkboxes de tarefas no [NOTES.md](NOTES.md).
-   - Registre novos aprendizados no Muninn conforme estipulado em [AGENTS.md](AGENTS.md).
+1. Confirme a wave e a Definition of Done em `NOTES.md`.
+2. Para tarefa substancial, planeje antes de editar.
+3. Trabalhe somente no worktree e nos arquivos atribuídos.
+4. Use `make lint`, `make typecheck` e `make test` quando aplicáveis.
+5. Valide fluxos de UI no navegador, incluindo estados de erro e responsividade.
+6. Atualize o hand-off com resultado e evidências reais.
+7. Nunca envie evidências de falha ou contexto privado sem consentimento explícito.
