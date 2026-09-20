@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 // scripts/agent-pulse.mjs — Envia telemetria de atividade de um agente para o board local.
 // Uso:
-//   node scripts/agent-pulse.mjs --harness agy --card ft-01 --action "Refatorando CSS"
-//   node scripts/agent-pulse.mjs --harness claude --card ft-01 --status done
+//   node scripts/agent-pulse.mjs --harness agy --card bootstrap-01 --action "Refatorando CSS"
+//   node scripts/agent-pulse.mjs --harness claude --card bootstrap-01 --status done
 //
 // Pode ser chamado em hooks do Claude Code, scripts de automação ou antes/depois de tarefas.
 
@@ -29,7 +29,7 @@ const port = process.env.PORT || 3000;
 
 if (!cardId) {
   console.error("❌ Uso incorreto: --card <id-do-card> é obrigatório.");
-  console.error('Exemplo: node scripts/agent-pulse.mjs --harness agy --card ft-01 --action "Ajustando UI"');
+  console.error('Exemplo: node scripts/agent-pulse.mjs --harness agy --card bootstrap-01 --action "Ajustando UI"');
   process.exit(1);
 }
 
