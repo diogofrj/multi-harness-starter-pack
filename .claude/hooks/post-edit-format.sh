@@ -26,7 +26,7 @@ case "$ext" in
     if command -v pnpm >/dev/null 2>&1 && [ -f "pnpm-lock.yaml" ]; then
       pnpm prettier --write "$FILE_PATH" 2>/dev/null || true
       pnpm eslint --fix "$FILE_PATH" 2>/dev/null || errors+="eslint falhou em $FILE_PATH\n"
-    elif [ -f "package.json" ]; then
+    elif [ -f "package.json" ] && node -e 'const p=require("./package.json");process.exit(p.scripts?.lint || p.dependencies?.eslint || p.devDependencies?.eslint ? 0 : 1)' 2>/dev/null; then
       npx --no-install prettier --write "$FILE_PATH" 2>/dev/null || true
       npx --no-install eslint --fix "$FILE_PATH" 2>/dev/null || errors+="eslint falhou em $FILE_PATH\n"
     fi
