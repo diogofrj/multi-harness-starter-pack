@@ -1,14 +1,6 @@
 import { basename, join } from "node:path";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 
-export const columns = [
-  { id: "backlog", name: "Backlog" },
-  { id: "todo", name: "A fazer" },
-  { id: "in-progress", name: "Em andamento" },
-  { id: "review", name: "Revisão" },
-  { id: "done", name: "Fechado" },
-];
-
 export const esc = value => String(value ?? "")
   .replace(/&/g, "&amp;")
   .replace(/</g, "&lt;")
@@ -85,7 +77,8 @@ function parseFrontmatter(text) {
   return { meta, body: match[2] };
 }
 
-export function loadCards(dir = ".devtool/features") {
+export function loadCards(dir = ".devtool/features", config) {
+  if (!config?.columns?.length) throw new Error("loadCards exige columns de .devtool/board.json");
   const cards = listMarkdown(dir).map(file => {
     const { meta, body } = parseFrontmatter(readFileSync(file, "utf8"));
     const titleMatch = /^#\s+(.+)$/m.exec(body);
@@ -97,7 +90,7 @@ export function loadCards(dir = ".devtool/features") {
       id,
       shortId: /^([a-z]+-\d+[a-z]?)-/i.exec(id)?.[1] ?? id.replace(/-\d{4}-\d{2}-\d{2}$/, ""),
       title,
-      status: meta.status ?? "backlog",
+      status: meta.status ?? config.columns[0].id,
       priority: meta.priority ?? "medium",
       assignee: meta.assignee ?? null,
       dueDate: meta.dueDate ?? null,
@@ -111,5 +104,5 @@ export function loadCards(dir = ".devtool/features") {
       verify: { total: checks.length, checked: checks.filter(item => item[1].toLowerCase() === "x").length },
     };
   }).sort((a, b) => String(a.order).localeCompare(String(b.order)));
-  return { columns, cards };
+  return { columns: config.columns, cards };
 }

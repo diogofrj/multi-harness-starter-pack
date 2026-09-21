@@ -5,14 +5,14 @@
 // 1. "Agente ativo" no card = processo de harness com cwd dentro de um worktree deste repositório
 //    E sinal de trabalho no intervalo: CPU acima do piso OU processo-filho novo (ferramenta disparada).
 //    Sem sinal, nenhum pulso: o board expira o agente sozinho (90 s). Não existe "idle" no card.
-// 2. Harness aberto sem trabalhar continua visível em outra faixa do board ("Harnesses abertos"),
+// 2. Harness aberto sem trabalhar continua visível em uma faixa separada do board,
 //    via POST /api/presence, com worktree e branch. Cumpre "qualquer harness rodando aparece"
 //    sem poluir "Agentes ativos".
 // 3. Processo sumiu (harness fechou ou saiu do worktree) = pulso `done` imediato no card.
 // O ticket (card) é inferido da branch do worktree. Arquivo tocado recentemente NÃO é presença.
 //
-// Uso: node scripts/worktree-pulse.mjs [--once] [--interval 30] [--repo <path>] [--verbose]
-// Env:  BOARD_PORT (padrão 3000), BOARD_AUTOSTART=0 para não subir o board.
+// Uso: node scripts/worktree-pulse.mjs [--once] [--interval <segundos>] [--repo <path>] [--verbose]
+// Env: BOARD_PORT sobrescreve o board.json; BOARD_AUTOSTART=0 impede subir o board.
 
 import { execFileSync, spawn } from "node:child_process";
 import { readdirSync, readFileSync, readlinkSync } from "node:fs";
@@ -26,12 +26,12 @@ const args = process.argv.slice(2);
 const arg = (f, d = null) => { const i = args.indexOf(f); return i !== -1 && i + 1 < args.length ? args[i + 1] : d; };
 const ONCE = args.includes("--once");
 const VERBOSE = args.includes("--verbose");
-const INTERVAL_S = Number(arg("--interval", 30));
 const REPO = path.resolve(arg("--repo", path.join(path.dirname(fileURLToPath(import.meta.url)), "..")));
-const PORT = Number(process.env.BOARD_PORT || 3000);
+const BOARD_CONFIG = loadBoardConfig(REPO);
+const INTERVAL_S = Number(arg("--interval", process.env.PULSE_INTERVAL || BOARD_CONFIG.presence.intervalSeconds));
+const PORT = Number(process.env.BOARD_PORT || process.env.PORT || BOARD_CONFIG.port);
 const AUTOSTART = process.env.BOARD_AUTOSTART !== "0";
 const PRESENCE_ONLY = process.env.BOARD_PRESENCE_ONLY === "1";
-const BOARD_CONFIG = loadBoardConfig(REPO);
 const CPU_WORKING_JIFFIES = 100; // ~1 s de CPU no intervalo (3 % de um core em 30 s); abaixo disso é harness parado
 
 const git = (cwd, ...a) => execFileSync("git", a, { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
@@ -205,7 +205,7 @@ async function cycle() {
   }
   for (const k of [...prev.keys()]) if (!present.has(k)) prev.delete(k);
 
-  if (!refused) {
+  if (!refused && BOARD_CONFIG.presence.enabled) {
     const r = await post("/api/presence", { updatedAt: Date.now(), interval: INTERVAL_S, items });
     if (!r.ok && r.err === "ECONNREFUSED") refused = true;
   }

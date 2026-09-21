@@ -1,7 +1,26 @@
 {
-  "port": 3000,
-  "cardIdPattern": "([A-Za-z]+-[0-9]+[a-z]?)",
+  "cardPrefix": "TK-",
+  "cardIdPattern": "(TK-[0-9]+[a-z]?)",
   "cardIdFormat": "lower($1)",
   "mainBranchCard": null,
-  "specialCases": []
+  "specialCases": [],
+  "columns": [
+    { "id": "backlog", "name": "Backlog" },
+    { "id": "todo", "name": "A fazer" },
+    { "id": "in-progress", "name": "Em andamento" },
+    { "id": "review", "name": "Revisão" },
+    { "id": "done", "name": "Fechado" }
+  ],
+  "port": 3000,
+  "bind": "0.0.0.0",
+  "refreshIntervalSeconds": 10,
+  "agentTimeoutSeconds": 90,
+  "pulseTtlSeconds": { "min": 10, "max": 900 },
+  "presence": {
+    "enabled": true,
+    "label": "Harnesses abertos",
+    "intervalSeconds": 30,
+    "staleAfterIntervals": 3,
+    "defaultOpen": false
+  }
 }

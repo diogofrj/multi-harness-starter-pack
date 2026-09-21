@@ -11,6 +11,7 @@ import http from "node:http";
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
+import { loadBoardConfig } from "./board-config.mjs";
 
 const args = process.argv.slice(2);
 function getArg(flag, fallback = null) {
@@ -31,10 +32,11 @@ const action = getArg("--action", "Executando tarefa...");
 const status = getArg("--status", "working");
 const ttlMs = Number(getArg("--ttl", 0)) || undefined;
 const model = getArg("--model", process.env.AGENT_MODEL || "") || undefined; // ex.: claude-sonnet-5, gpt-5.6-terra // validade do pulso em ms (comando longo: até 15 min)
-const port = Number(process.env.BOARD_PORT || process.env.PORT || 3000);
+const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
+const boardConfig = loadBoardConfig(repoRoot);
+const port = Number(process.env.BOARD_PORT || process.env.PORT || boardConfig.port);
 const autostart = process.env.BOARD_AUTOSTART !== "0";
 const boardUrl = `http://localhost:${port}`;
-const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
 const serverPath = join(repoRoot, "server.mjs");
 
 if (!cardId) {

@@ -4,14 +4,18 @@
 // Suporta tanto deploy estático na Vercel quanto telemetria em tempo real via SSE (server.mjs).
 //
 // uso: node scripts/build-board.mjs [featuresDir] [outFile]
-//      BOARD_TITLE="fulltech" node scripts/build-board.mjs
+//      BOARD_TITLE="meu-projeto" node scripts/build-board.mjs
 
-import { readdirSync, readFileSync, mkdirSync, writeFileSync, statSync } from "node:fs";
-import { join, basename } from "node:path";
-import { columns as COLUMNS, loadCards as loadBoardCards } from "./board-cards.mjs";
+import { readFileSync, mkdirSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+import { loadCards as loadBoardCards } from "./board-cards.mjs";
+import { loadBoardConfig } from "./board-config.mjs";
 
 const FEATURES = process.argv[2] ?? ".devtool/features";
 const OUT = process.argv[3] ?? "dist/index.html";
+const BOARD_CONFIG = loadBoardConfig();
+const COLUMNS = BOARD_CONFIG.columns;
+const PRESENCE_CONFIG = BOARD_CONFIG.presence;
 const packageName = (() => {
   try {
     return JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")).name;
@@ -20,62 +24,6 @@ const packageName = (() => {
   }
 })();
 const TITLE = process.env.BOARD_TITLE ?? packageName ?? "multi-harness";
-
-// ---------- leitura ----------
-function listMd(dir) {
-  const out = [];
-  try {
-    for (const name of readdirSync(dir)) {
-      const p = join(dir, name);
-      if (statSync(p).isDirectory()) out.push(...listMd(p));
-      else if (name.endsWith(".md")) out.push(p);
-    }
-  } catch {}
-  return out;
-}
-
-function parseFrontmatter(text) {
-  const m = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/.exec(text);
-  if (!m) return { meta: {}, body: text };
-  const meta = {};
-  for (const line of m[1].split(/\r?\n/)) {
-    const kv = /^([A-Za-z]+):\s*(.*)$/.exec(line);
-    if (!kv) continue;
-    const [, k, raw] = kv;
-    let v = raw.trim();
-    if (v === "null" || v === "") v = null;
-    else if (v.startsWith("[")) {
-      try { v = JSON.parse(v); } catch { v = v.slice(1, -1).split(",").map(s => s.trim().replace(/^"|"$/g, "")).filter(Boolean); }
-    } else if (v.startsWith('"') && v.endsWith('"')) v = v.slice(1, -1);
-    meta[k] = v;
-  }
-  return { meta, body: m[2] };
-}
-
-function loadCards() {
-  return listMd(FEATURES).map(file => {
-    const { meta, body } = parseFrontmatter(readFileSync(file, "utf8"));
-    const titleMatch = /^#\s+(.+)$/m.exec(body);
-    const title = titleMatch ? titleMatch[1].trim() : basename(file, ".md");
-    const rest = titleMatch ? body.replace(titleMatch[0], "").trim() : body.trim();
-    const id = meta.id ?? basename(file, ".md");
-    return {
-      id,
-      shortId: /^([a-z]+-\d+)-/.exec(id)?.[1] ?? id.replace(/-\d{4}-\d{2}-\d{2}$/, ""),
-      title,
-      status: meta.status ?? "backlog",
-      priority: meta.priority ?? "medium",
-      assignee: meta.assignee ?? null,
-      dueDate: meta.dueDate ?? null,
-      completedAt: meta.completedAt ?? null,
-      modified: meta.modified ?? null,
-      labels: Array.isArray(meta.labels) ? meta.labels : [],
-      order: meta.order ?? "a0",
-      file: file.replace(/\\/g, "/"),
-      html: md(rest),
-    };
-  });
-}
 
 // ---------- markdown mínimo ----------
 const esc = s => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -120,7 +68,7 @@ function md(src) {
 }
 
 // ---------- render ----------
-const cards = loadBoardCards(FEATURES).cards.map(card => ({ ...card, html: card.bodyHtml }));
+const cards = loadBoardCards(FEATURES, BOARD_CONFIG).cards.map(card => ({ ...card, html: card.bodyHtml }));
 const byCol = Object.fromEntries(COLUMNS.map(c => [c.id, cards.filter(k => k.status === c.id)]));
 const labelSet = [...new Set(cards.flatMap(c => c.labels))].sort();
 const universes = labelSet.filter(l => l.startsWith("universe:")).map(l => l.slice(9));
@@ -648,6 +596,7 @@ section.live-agents h2{
 #presence-dock{position:fixed;right:18px;bottom:18px;z-index:70;max-width:min(560px,calc(100vw - 36px));background:var(--surface-elevated);border:1px solid rgba(0,229,255,.35);border-radius:10px;box-shadow:0 12px 36px rgba(0,0,0,.55)}
 #presence-toggle{display:block;width:100%;padding:9px 12px;color:var(--accent);font:12px "IBM Plex Mono",monospace;text-align:left}
 #presence-dock:not(.open) #presence-strip{display:none}
+#presence-dock[hidden]{display:none}
 #peek{position:fixed;z-index:80;width:min(390px,calc(100vw - 24px));padding:14px;background:var(--surface-elevated);border:1px solid var(--rule-highlight);border-radius:8px;box-shadow:0 14px 42px rgba(0,0,0,.65);pointer-events:auto}
 #peek h3{margin:0 0 8px;font-size:15px;color:var(--ink-bright)}
 #peek p{margin:5px 0;color:var(--muted);font-size:12px}
@@ -815,8 +764,8 @@ ${sprintHtml}
   </div>
 </main>
 
-<aside id="presence-dock">
-  <button id="presence-toggle" aria-expanded="false">Harnesses · 0 · watcher parado</button>
+<aside id="presence-dock"${PRESENCE_CONFIG.enabled ? "" : " hidden"}>
+  <button id="presence-toggle" aria-expanded="false">${esc(PRESENCE_CONFIG.label)} · 0 · watcher parado</button>
   <div class="presence" id="presence-strip"><span class="p"><span class="d"></span>sem watcher (make board)</span></div>
 </aside>
 
@@ -867,7 +816,7 @@ ${sprintHtml}
   let lastRefresh = Date.now();
   let refreshing = false;
   const movedUntil = new Map();
-  const refreshSeconds = Math.max(1, Number(new URLSearchParams(location.search).get("refresh")) || 10);
+  const refreshSeconds = Math.max(1, Number(new URLSearchParams(location.search).get("refresh")) || ${Number(BOARD_CONFIG.refreshIntervalSeconds)});
   const escText = value => String(value ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 
   function filterData(card) {
@@ -1084,8 +1033,10 @@ ${sprintHtml}
 
   const presenceDock = document.getElementById("presence-dock");
   const presenceToggle = document.getElementById("presence-toggle");
+  const presenceLabel = ${JSON.stringify(PRESENCE_CONFIG.label)};
   const setPresenceOpen = open => { presenceDock.classList.toggle("open", open); presenceToggle.setAttribute("aria-expanded", String(open)); localStorage.setItem("board.presence.open", String(open)); };
-  setPresenceOpen(localStorage.getItem("board.presence.open") === "true");
+  const storedPresenceOpen = localStorage.getItem("board.presence.open");
+  setPresenceOpen(storedPresenceOpen === null ? ${Boolean(PRESENCE_CONFIG.defaultOpen)} : storedPresenceOpen === "true");
   presenceToggle.addEventListener("click", () => setPresenceOpen(!presenceDock.classList.contains("open")));
 
   const peek = document.getElementById("peek");
@@ -1128,13 +1079,13 @@ ${sprintHtml}
   const agentsMap = new Map();
   const presenceStrip = document.getElementById("presence-strip");
   const HARNESS_ICON = { agy: "🪐", "antigravity-ide": "🪐", claude: "🧠", "claude-remote": "🧠", codex: "⚡", gemini: "✨", opencode: "🧩", cursor: "🖱️" };
-  // Faixa "Harnesses abertos": processo de harness com cwd em worktree, trabalhando ou não.
+  // Faixa de presença: processo de harness com cwd em worktree, trabalhando ou não.
   // Só quem está trabalhando vira card em "Agentes ativos" (regra do watcher).
   function renderPresence(p) {
     const items = (p && p.items) || [];
     const when = p && p.updatedAt ? new Date(p.updatedAt).toLocaleTimeString() : "";
-    presenceToggle.textContent = 'Harnesses · ' + items.length + (p && p.stale ? ' · watcher parado' : '');
-    let html = '<span class="t">Harnesses abertos · ' + items.length + (when ? ' · ' + escText(when) : '') + (p && p.stale ? ' · watcher parado' : '') + '</span>';
+    presenceToggle.textContent = presenceLabel + ' · ' + items.length + (p && p.stale ? ' · watcher parado' : '');
+    let html = '<span class="t">' + escText(presenceLabel) + ' · ' + items.length + (when ? ' · ' + escText(when) : '') + (p && p.stale ? ' · watcher parado' : '') + '</span>';
     if (!items.length) html += '<span class="p"><span class="d"></span>' + (p && p.updatedAt ? 'nenhum harness em worktree' : 'sem watcher (make board)') + '</span>';
     for (const it of items) {
       html += '<span class="p ' + (it.working ? 'on' : '') + '" title="' + escText((it.path || '') + ' · ' + (it.pids || 0) + ' processo(s)' + (it.dirty ? ' · ' + it.dirty + ' alterado(s)' : '')) + '">'

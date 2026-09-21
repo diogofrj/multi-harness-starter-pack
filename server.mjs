@@ -16,6 +16,7 @@ import { loadBoardConfig } from "./scripts/board-config.mjs";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const boardConfig = loadBoardConfig(__dirname);
 const PORT = Number(process.env.BOARD_PORT || process.env.PORT || boardConfig.port);
+const BIND = process.env.BOARD_BIND || boardConfig.bind;
 const FEATURES_DIR = path.join(__dirname, ".devtool", "features");
 const BUILD_SCRIPT = path.join(__dirname, "scripts", "build-board.mjs");
 const DIST_INDEX = process.env.BOARD_DIST ? path.resolve(process.env.BOARD_DIST) : path.join(__dirname, "dist", "index.html");
@@ -25,8 +26,8 @@ const TELEMETRY_SOURCE = process.env.BOARD_TELEMETRY_SOURCE || null;
 // id = `${harness}:${cardId}`
 const activeAgents = new Map();
 const sseClients = new Set();
-// Harnesses abertos por worktree (faixa "Harnesses abertos"); alimentado por scripts/worktree-pulse.mjs
-let presence = { updatedAt: 0, interval: 30, items: [] };
+// Presença por worktree em faixa separada; alimentada por scripts/worktree-pulse.mjs.
+let presence = { updatedAt: 0, interval: boardConfig.presence.intervalSeconds, items: [] };
 
 function applyMirroredEvent(event, data) {
   if (event === "init_agents" && Array.isArray(data)) {
@@ -74,7 +75,9 @@ function connectTelemetryMirror() {
   console.log(`[mirror] Telemetria espelhada de ${TELEMETRY_SOURCE}`);
 }
 
-const AGENT_TIMEOUT_MS = 90_000; // 90 segundos sem heartbeat = expira
+const AGENT_TIMEOUT_MS = Number(boardConfig.agentTimeoutSeconds) * 1000;
+const PULSE_TTL_MIN_MS = Number(boardConfig.pulseTtlSeconds.min) * 1000;
+const PULSE_TTL_MAX_MS = Number(boardConfig.pulseTtlSeconds.max) * 1000;
 
 // Limpeza automática de agentes inativos
 setInterval(() => {
@@ -88,7 +91,7 @@ setInterval(() => {
     }
   }
   // Watcher parado: a faixa de harnesses abertos não pode mostrar dado velho
-  if (presence.items.length && now - presence.updatedAt > 3 * (presence.interval || 30) * 1000) {
+  if (presence.items.length && now - presence.updatedAt > Number(boardConfig.presence.staleAfterIntervals) * (presence.interval || boardConfig.presence.intervalSeconds) * 1000) {
     presence = { updatedAt: presence.updatedAt, interval: presence.interval, items: [], stale: true };
     broadcastSSE("presence", presence);
   }
@@ -178,7 +181,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === "GET" && url.pathname === "/api/cards") {
     try {
       res.writeHead(200, { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" });
-      res.end(JSON.stringify(loadCards(FEATURES_DIR)));
+      res.end(JSON.stringify(loadCards(FEATURES_DIR, boardConfig)));
     } catch (error) {
       res.writeHead(500, { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" });
       res.end(JSON.stringify({ error: "Não foi possível ler os cards", details: error.message }));
@@ -199,7 +202,7 @@ const server = http.createServer(async (req, res) => {
       try {
         const payload = JSON.parse(body);
         if (!Array.isArray(payload.items)) throw new Error("items deve ser lista");
-        presence = { updatedAt: Number(payload.updatedAt) || Date.now(), interval: Number(payload.interval) || 30, items: payload.items.slice(0, 64) };
+        presence = { updatedAt: Number(payload.updatedAt) || Date.now(), interval: Number(payload.interval) || boardConfig.presence.intervalSeconds, items: payload.items.slice(0, 64) };
         broadcastSSE("presence", presence);
         res.writeHead(200, { "Content-Type": "application/json" });
         res.end(JSON.stringify({ ok: true, count: presence.items.length }));
@@ -219,8 +222,8 @@ const server = http.createServer(async (req, res) => {
       try {
         const payload = JSON.parse(body);
         const { harness = "agy", agent = "Agente", cardId, action = "Trabalhando", status = "working" } = payload;
-        // Pulso pode declarar validade própria (comando longo, ex. vitest): entre 10 s e 15 min
-        const ttlMs = Math.min(Math.max(Number(payload.ttlMs) || AGENT_TIMEOUT_MS, 10_000), 15 * 60_000);
+        // Pulso pode declarar validade própria dentro da faixa configurada.
+        const ttlMs = Math.min(Math.max(Number(payload.ttlMs) || AGENT_TIMEOUT_MS, PULSE_TTL_MIN_MS), PULSE_TTL_MAX_MS);
 
         if (!cardId) {
           res.writeHead(400, { "Content-Type": "application/json" });
@@ -294,8 +297,8 @@ const server = http.createServer(async (req, res) => {
 
 connectTelemetryMirror();
 
-server.listen(PORT, () => {
-  console.log(`\n🪐 [board] Servidor local futurista rodando em: http://localhost:${PORT}`);
+server.listen(PORT, BIND, () => {
+  console.log(`\n🪐 [board] Servidor local futurista rodando em: http://${BIND}:${PORT}`);
   console.log(`📡 SSE Stream: http://localhost:${PORT}/api/agents/stream`);
   console.log(`⚡ Endpoint de Pulso: POST http://localhost:${PORT}/api/agents/pulse\n`);
 });
