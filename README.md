@@ -53,15 +53,56 @@ Regras essenciais:
 
 ```bash
 make board
-BOARD_PORT=3000 make board
-make board-smoke
+BOARD_PORT=3100 make board
+make board-status
+make board-stop
 ```
 
-O board lê cards Markdown de `.devtool/features/`, expõe `/api/cards`, recebe pulsos efêmeros e usa `BOARD_PORT` (3000 por padrão). A configuração portátil está em `.devtool/board.json`.
+O board lê cards Markdown de `.devtool/features/` e expõe `/api/cards`. A interface atualiza por SSE e usa polling como fallback, sem exigir F5. Ela inclui uma coluna exclusiva para agentes ativos, uma faixa minimizável para harnesses abertos, grupos de filtros minimizáveis, modo tela cheia, prévia no hover e painel pelo teclado com `Enter`.
+
+`.devtool/board.json` é a fonte única da configuração portátil. Nele ficam:
+
+- `cardPrefix`, `cardIdPattern`, `cardIdFormat`, `mainBranchCard` e `specialCases` para converter branches em IDs;
+- `columns` para definir IDs, nomes e ordem das colunas;
+- `port` e `bind` para a escuta do servidor;
+- `refreshIntervalSeconds`, `agentTimeoutSeconds` e `pulseTtlSeconds` para atualização e expiração;
+- `presence` para habilitar, nomear e controlar a faixa de harnesses abertos.
+
+O exemplo usa o prefixo neutro `TK-`. Uma branch como `feat/TK-12-login` é associada ao card `tk-12`. Para criar um card:
+
+```markdown
+---
+id: tk-12
+status: todo
+priority: high
+assignee: Codex
+labels: [wave-1, backend]
+order: a12
+---
+# Implementar login
+
+Descrição da entrega.
+```
+
+O alvo `make board` grava o HTML efêmero em `/tmp`; `BOARD_DIST` escolhe outro caminho gravável. `BOARD_PORT` e `BOARD_BIND` sobrescrevem porta e bind sem alterar o arquivo. Para Docker Compose, use `make board-docker`; o alvo injeta a porta configurada no compose.
+
+O watcher publica presença de processos por worktree e associa cada branch ao card conforme o `board.json`. Agentes ativos são mostrados somente enquanto há sinal real de trabalho. A faixa de presença continua mostrando harnesses abertos mesmo quando estão parados. Para espelhar telemetria de outro board, defina `BOARD_TELEMETRY_SOURCE` com a URL do stream SSE.
 
 ```bash
 node scripts/agent-pulse.mjs --harness codex --card bootstrap-01 --action "Executando Wave 0"
 ```
+
+Valide a experiência completa numa porta isolada:
+
+```bash
+BOARD_PORT=3105 make board-smoke
+```
+
+O smoke Playwright cobre carga e API, refresh por SSE, fallback por polling, dock, filtros, tela cheia, prévia no hover, abertura por `Enter`, busca e telemetria de agente.
+
+### Pesquisa web
+
+O subagente `.claude/agents/web-researcher.md` está incorporado para pesquisas com fontes. Use-o apenas quando a tarefa pedir informação externa; código e contexto privado não devem sair do repositório sem consentimento.
 
 ## Estrutura
 

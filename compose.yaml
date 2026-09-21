@@ -3,13 +3,14 @@ services:
     build: .
     container_name: multi-harness-board
     ports:
-      - "3000:3000"
+      - "${BOARD_PORT}:${BOARD_PORT}"
     volumes:
       - ./.devtool:/app/.devtool:ro
       - ./dist:/app/dist
       - ./server.mjs:/app/server.mjs
       - ./scripts:/app/scripts
     environment:
-      - PORT=3000
+      - PORT=${BOARD_PORT}
+      - BOARD_PORT=${BOARD_PORT}
       - NODE_ENV=development
     restart: unless-stopped
