@@ -3,7 +3,7 @@
 ```text
 task_id / reservation_generation: board-v3 / 1
 owner / timestamp: Codex, papel C / 2026-09-21 UTC
-branch / base_sha / head_sha: feat/board-v3 / 042ab6e / 74d1a52
+branch / base_sha / head_sha: feat/board-v3 / 042ab6e / ebf7db4
 status: ready_for_review
 ```
 
