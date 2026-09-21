@@ -53,11 +53,11 @@ Regras essenciais:
 
 ```bash
 make board
-# ou
-docker compose up
+BOARD_PORT=3000 make board
+make board-smoke
 ```
 
-O board lê cards Markdown de `.devtool/features/` e recebe pulsos efêmeros:
+O board lê cards Markdown de `.devtool/features/`, expõe `/api/cards`, recebe pulsos efêmeros e usa `BOARD_PORT` (3000 por padrão). A configuração portátil está em `.devtool/board.json`.
 
 ```bash
 node scripts/agent-pulse.mjs --harness codex --card bootstrap-01 --action "Executando Wave 0"
@@ -84,14 +84,7 @@ node scripts/agent-pulse.mjs --harness codex --card bootstrap-01 --action "Execu
 
 Este template nasceu de [brunobracaioli/claude-code-starter-pack](https://github.com/brunobracaioli/claude-code-starter-pack) e é mantido em [diogofrj/multi-harness-starter-pack](https://github.com/diogofrj/multi-harness-starter-pack).
 
-Remotes recomendados:
-
-```bash
-git remote set-url origin https://github.com/diogofrj/multi-harness-starter-pack.git
-git remote add upstream https://github.com/brunobracaioli/claude-code-starter-pack.git
-```
-
-Ao sincronizar o upstream, preserve deliberadamente `AGENTS.md`, as pontes multi-harness e as regras de consentimento.
+O web-researcher foi incorporado em `cc4ff5c`. O template preserva a atribuição de origem e é mantido em [diogofrj/multi-harness-starter-pack](https://github.com/diogofrj/multi-harness-starter-pack).
 
 ## Licença
 
