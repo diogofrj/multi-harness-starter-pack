@@ -362,7 +362,10 @@ nav{
   border-bottom: 1px solid var(--rule-soft);
 }
 nav .g{display: flex; flex-wrap: wrap; gap: 6px; align-items: center}
-nav .g .group-toggle{color: var(--muted); font-size: 12px; font-weight: 500; margin-right: 4px; text-transform: uppercase; letter-spacing: .05em}
+nav .g .group-toggle{color:var(--ink);font-size:12px;font-weight:600;margin-right:4px;padding:4px 7px;border:1px solid var(--rule);border-radius:var(--radius-sm);text-transform:uppercase;letter-spacing:.05em;background:rgba(255,255,255,.03)}
+nav .g .group-toggle::before{content:"▾ ";color:var(--accent)}
+nav .g.collapsed .group-toggle::before{content:"▸ "}
+nav .g .group-toggle:hover{border-color:var(--accent);color:var(--accent)}
 nav .g.collapsed .chip{display:none}
 .filter-tools{display:flex;gap:8px;align-items:center}
 .chip{
@@ -1101,7 +1104,7 @@ ${sprintHtml}
     peek.style.top = Math.max(12, Math.min(innerHeight - own.height - 12, rect.top)) + "px";
   }
   function schedulePeek(card) { clearTimeout(peekTimer); peekTimer = setTimeout(() => showPeek(card), 350); }
-  kanban.addEventListener("mouseover", event => { const title = event.target.closest(".ctitle"); if (title) schedulePeek(title.closest(".card")); });
+  kanban.addEventListener("mouseover", event => { const card = event.target.closest(".card"); if (card && !card.contains(event.relatedTarget)) schedulePeek(card); });
   kanban.addEventListener("mouseout", event => { if (event.target.closest(".card") && !event.relatedTarget?.closest?.("#peek")) closePeek(); });
   kanban.addEventListener("focusin", event => { const card = event.target.closest(".card"); if (card) schedulePeek(card); });
   kanban.addEventListener("focusout", event => { if (event.target.closest(".card")) closePeek(); });

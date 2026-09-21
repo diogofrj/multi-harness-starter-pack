@@ -30,6 +30,7 @@ const INTERVAL_S = Number(arg("--interval", 30));
 const REPO = path.resolve(arg("--repo", path.join(path.dirname(fileURLToPath(import.meta.url)), "..")));
 const PORT = Number(process.env.BOARD_PORT || 3000);
 const AUTOSTART = process.env.BOARD_AUTOSTART !== "0";
+const PRESENCE_ONLY = process.env.BOARD_PRESENCE_ONLY === "1";
 const BOARD_CONFIG = loadBoardConfig(REPO);
 const CPU_WORKING_JIFFIES = 100; // ~1 s de CPU no intervalo (3 % de um core em 30 s); abaixo disso é harness parado
 
@@ -187,7 +188,7 @@ async function cycle() {
     const model = modelFor(e.harness);
     items.push({ harness: e.harness, agent: e.agent, model, card: e.card, branch: e.branch, path: e.path, pids: e.pids.size, working, dirty });
     if (VERBOSE) console.log(`  ${e.harness} -> ${e.card} ${working ? "ATIVO" : "parado"} cpu=${cpu} novos=${fresh} pids=${e.pids.size}`);
-    if (!working) continue;
+    if (!working || PRESENCE_ONLY) continue;
     const action = `${e.agent} em ${e.branch} · ${e.pids.size} processo(s)` + (fresh ? ` · ${fresh} novo(s)` : "") + (dirty ? ` · ${dirty} arquivo(s) alterado(s)` : "");
     const r = await post("/api/agents/pulse", { harness: e.harness, agent: e.agent, cardId: e.card, action, status: "working", model: model || undefined });
     if (r.ok) { pulses++; announced.set(key, { card: e.card, harness: e.harness, agent: e.agent }); }
@@ -196,6 +197,7 @@ async function cycle() {
 
   // Sumiu do worktree: done imediato no card
   for (const [key, a] of [...announced]) {
+    if (PRESENCE_ONLY) { announced.delete(key); continue; }
     if (present.has(key)) continue;
     announced.delete(key);
     const r = await post("/api/agents/pulse", { harness: a.harness, agent: a.agent, cardId: a.card, action: "processo encerrado", status: "done" });

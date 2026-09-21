@@ -19,6 +19,7 @@ const PORT = Number(process.env.BOARD_PORT || process.env.PORT || boardConfig.po
 const FEATURES_DIR = path.join(__dirname, ".devtool", "features");
 const BUILD_SCRIPT = path.join(__dirname, "scripts", "build-board.mjs");
 const DIST_INDEX = process.env.BOARD_DIST ? path.resolve(process.env.BOARD_DIST) : path.join(__dirname, "dist", "index.html");
+const TELEMETRY_SOURCE = process.env.BOARD_TELEMETRY_SOURCE || null;
 
 // Mapa de agentes ativos: Map<id, AgentActivity>
 // id = `${harness}:${cardId}`
@@ -26,6 +27,52 @@ const activeAgents = new Map();
 const sseClients = new Set();
 // Harnesses abertos por worktree (faixa "Harnesses abertos"); alimentado por scripts/worktree-pulse.mjs
 let presence = { updatedAt: 0, interval: 30, items: [] };
+
+function applyMirroredEvent(event, data) {
+  if (event === "init_agents" && Array.isArray(data)) {
+    activeAgents.clear();
+    for (const agent of data) if (agent?.id) activeAgents.set(agent.id, agent);
+    broadcastSSE("init_agents", data);
+  } else if (event === "agent_upsert" && data?.id) {
+    activeAgents.set(data.id, data);
+    broadcastSSE("agent_upsert", data);
+  } else if (event === "agent_removed" && data?.id) {
+    activeAgents.delete(data.id);
+    broadcastSSE("agent_removed", data);
+  } else if (event === "presence" && data && Array.isArray(data.items)) {
+    presence = data;
+    broadcastSSE("presence", data);
+  }
+}
+
+function connectTelemetryMirror() {
+  if (!TELEMETRY_SOURCE) return;
+  let retryTimer = null;
+  const reconnect = () => {
+    if (retryTimer) return;
+    retryTimer = setTimeout(() => { retryTimer = null; connectTelemetryMirror(); }, 2_000);
+  };
+  const request = http.get(TELEMETRY_SOURCE, response => {
+    if (response.statusCode !== 200) { response.resume(); reconnect(); return; }
+    response.setEncoding("utf8");
+    let buffer = "";
+    response.on("data", chunk => {
+      buffer += chunk;
+      let boundary;
+      while ((boundary = buffer.indexOf("\n\n")) !== -1) {
+        const block = buffer.slice(0, boundary);
+        buffer = buffer.slice(boundary + 2);
+        const event = /^event:\s*(.+)$/m.exec(block)?.[1];
+        const raw = [...block.matchAll(/^data:\s*(.*)$/gm)].map(match => match[1]).join("\n");
+        if (!event || !raw) continue;
+        try { applyMirroredEvent(event, JSON.parse(raw)); } catch {}
+      }
+    });
+    response.on("end", reconnect);
+  });
+  request.on("error", reconnect);
+  console.log(`[mirror] Telemetria espelhada de ${TELEMETRY_SOURCE}`);
+}
 
 const AGENT_TIMEOUT_MS = 90_000; // 90 segundos sem heartbeat = expira
 
@@ -224,13 +271,13 @@ const server = http.createServer(async (req, res) => {
   if (req.method === "GET") {
     if (fs.existsSync(DIST_INDEX)) {
       const html = fs.readFileSync(DIST_INDEX, "utf8");
-      res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+      res.writeHead(200, { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" });
       res.end(html);
     } else {
       triggerBuild(() => {
         if (fs.existsSync(DIST_INDEX)) {
           const html = fs.readFileSync(DIST_INDEX, "utf8");
-          res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+          res.writeHead(200, { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" });
           res.end(html);
         } else {
           res.writeHead(500, { "Content-Type": "text/plain" });
@@ -244,6 +291,8 @@ const server = http.createServer(async (req, res) => {
   res.writeHead(404, { "Content-Type": "text/plain" });
   res.end("Não encontrado");
 });
+
+connectTelemetryMirror();
 
 server.listen(PORT, () => {
   console.log(`\n🪐 [board] Servidor local futurista rodando em: http://localhost:${PORT}`);
