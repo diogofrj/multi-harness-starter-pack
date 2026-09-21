@@ -1,25 +1,15 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-plugin.json",
-  "name": "b2tech-starter",
-  "version": "1.0.0",
-  "description": "Starter pack B2 Tech: hooks de segurança, skills de code review e security audit. Pensado para projetos novos com stack Python/Flask + Next.js/TS em GCP.",
+  "name": "multi-harness-starter-pack",
+  "version": "1.1.0",
+  "description": "Contrato, hooks, skills e fluxo seguro para projetos operados por múltiplos harnesses de IA.",
   "author": {
-    "name": "Bruno Bracaioli",
-    "email": "bruno@b2tech.com",
-    "url": "https://b2tech.io"
+    "name": "Diogo Fernandes",
+    "url": "https://github.com/diogofrj"
   },
-  "homepage": "https://b2tech.io",
-  "repository": "https://github.com/brunobracaioli/claude-code-starter-pack",
+  "homepage": "https://github.com/diogofrj/multi-harness-starter-pack",
+  "repository": "https://github.com/diogofrj/multi-harness-starter-pack",
   "license": "MIT",
-  "keywords": [
-    "security",
-    "code-review",
-    "ddd",
-    "vertical-slice",
-    "python",
-    "nextjs",
-    "gcp",
-    "b2tech"
-  ],
+  "keywords": ["multi-harness", "agents", "security", "code-review", "worktrees", "mcp"],
   "skills": ["../.claude/skills/"]
 }

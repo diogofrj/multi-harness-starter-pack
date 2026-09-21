@@ -1,7 +1,7 @@
 ---
 name: security-check
 description: Auditoria de segurança Security by Design. Use quando o usuário pedir "audite a segurança", "security review", "verifique vulnerabilidades", ou antes de subir feature pra produção. Cobre OWASP Top 10, gestão de secrets, AuthN/AuthZ, supply chain e logs.
-allowed-tools: Read, Grep, Glob, Bash
+allowed-tools: Read, Grep, Glob, Bash, Zsh
 ---
 
 # Security Check — Security by Design
@@ -70,7 +70,7 @@ do projeto (Python/Flask, Next.js/TS, GCP/Cloudflare/Supabase).
 - [ ] Eventos de segurança logados: login fail, permission denied, password change.
 - [ ] Logs estruturados (JSON) com correlation ID.
 
-**Infra (GCP/Cloudflare)**
+**Infra (GCP/Azure/AWS/Cloudflare)**
 - [ ] Cloud Run/Functions com IAM mínimo (não Editor/Owner).
 - [ ] Cloud SQL com IP privado, não público.
 - [ ] WAF (Cloudflare) ativo nas APIs públicas.
