@@ -8,18 +8,18 @@
 
 import { readdirSync, readFileSync, mkdirSync, writeFileSync, statSync } from "node:fs";
 import { join, basename } from "node:path";
+import { columns as COLUMNS, loadCards as loadBoardCards } from "./board-cards.mjs";
 
 const FEATURES = process.argv[2] ?? ".devtool/features";
 const OUT = process.argv[3] ?? "dist/index.html";
-const TITLE = process.env.BOARD_TITLE ?? "multi-harness";
-
-const COLUMNS = [
-  { id: "backlog", name: "Backlog" },
-  { id: "todo", name: "A fazer" },
-  { id: "in-progress", name: "Em andamento" },
-  { id: "review", name: "Revisão" },
-  { id: "done", name: "Fechado" },
-];
+const packageName = (() => {
+  try {
+    return JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")).name;
+  } catch {
+    return null;
+  }
+})();
+const TITLE = process.env.BOARD_TITLE ?? packageName ?? "multi-harness";
 
 // ---------- leitura ----------
 function listMd(dir) {
@@ -120,7 +120,7 @@ function md(src) {
 }
 
 // ---------- render ----------
-const cards = loadCards().sort((a, b) => a.order < b.order ? -1 : a.order > b.order ? 1 : 0);
+const cards = loadBoardCards(FEATURES).cards.map(card => ({ ...card, html: card.bodyHtml }));
 const byCol = Object.fromEntries(COLUMNS.map(c => [c.id, cards.filter(k => k.status === c.id)]));
 const labelSet = [...new Set(cards.flatMap(c => c.labels))].sort();
 const universes = labelSet.filter(l => l.startsWith("universe:")).map(l => l.slice(9));
@@ -128,6 +128,7 @@ const sprints = labelSet.filter(l => /^(sprint|wave)-/.test(l));
 const others = labelSet.filter(l => !l.startsWith("universe:") && !/^(sprint|wave)-/.test(l));
 const people = [...new Set(cards.map(c => c.assignee).filter(Boolean))].sort();
 const builtAt = new Date().toISOString();
+const cardDataJson = JSON.stringify({ columns: COLUMNS, cards }).replace(/</g, "\\u003c");
 
 // Leitura de sprint.md
 let sprintHtml = "";
@@ -361,7 +362,9 @@ nav{
   border-bottom: 1px solid var(--rule-soft);
 }
 nav .g{display: flex; flex-wrap: wrap; gap: 6px; align-items: center}
-nav .g span{color: var(--muted); font-size: 12px; font-weight: 500; margin-right: 4px; text-transform: uppercase; letter-spacing: .05em}
+nav .g .group-toggle{color: var(--muted); font-size: 12px; font-weight: 500; margin-right: 4px; text-transform: uppercase; letter-spacing: .05em}
+nav .g.collapsed .chip{display:none}
+.filter-tools{display:flex;gap:8px;align-items:center}
 .chip{
   padding: 3px 9px;
   border: 1px solid var(--rule);
@@ -416,13 +419,13 @@ nav .clear[hidden]{display: none}
 /* GRID DO KANBAN */
 main{
   display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: 320px;
+  grid-template-columns: 320px minmax(0,1fr);
   gap: 16px;
   padding: 16px 32px 60px;
-  overflow-x: auto;
   align-items: start;
 }
+#kanban{display:grid;grid-auto-flow:column;grid-auto-columns:320px;gap:16px;overflow-x:auto;min-width:0;padding-bottom:8px}
+#col-live-agents{position:sticky;left:0;z-index:5}
 section{
   background: rgba(14, 18, 26, 0.4);
   border: 1px solid var(--rule);
@@ -500,6 +503,9 @@ section ul{
 .card.p-high::before{background: var(--p-high); box-shadow: 0 0 6px var(--p-high);}
 .card.p-low::before{background: var(--p-low);}
 .card[hidden]{display: none}
+.card.moved{animation:card-moved 4s ease}
+.card.removing{opacity:0;transform:scale(.96);transition:opacity .16s ease,transform .16s ease}
+@keyframes card-moved{0%,20%{border-color:var(--accent);box-shadow:0 0 20px var(--accent-glow)}100%{border-color:var(--rule)}}
 
 .card-head{display: flex; justify-content: space-between; align-items: center;}
 .card .cid{font-size: 11px; color: var(--muted); font-weight: 500;}
@@ -610,6 +616,14 @@ section.live-agents h2{
 }
 .agent-timer{ color: var(--accent); font-weight: 500; }
 
+.presence{ padding:8px 10px; font-size:11px; color:var(--muted); display:flex; flex-wrap:wrap; gap:6px; align-items:center }
+.presence .t{ width:100%; text-transform:uppercase; letter-spacing:.06em; font-size:10px; opacity:.8 }
+.presence .p{ display:inline-flex; gap:6px; align-items:center; padding:3px 8px; border-radius:999px; background:#0d1520; border:1px solid rgba(255,255,255,.08) }
+.presence .p.on{ border-color: rgba(0,255,157,.5); color: #d8fff0 }
+.presence .p .d{ width:6px; height:6px; border-radius:50%; background:#556 }
+.presence .p.on .d{ background:#00ff9d; box-shadow:0 0 6px #00ff9d }
+.presence .p .b{ opacity:.75 }
+.agent-model{ font-size:10px; opacity:.85; letter-spacing:.02em }
 .empty-agents{
   padding: 24px 12px;
   text-align: center;
@@ -627,6 +641,18 @@ section.live-agents h2{
   border-radius: 50%;
   position: relative;
 }
+
+#presence-dock{position:fixed;right:18px;bottom:18px;z-index:70;max-width:min(560px,calc(100vw - 36px));background:var(--surface-elevated);border:1px solid rgba(0,229,255,.35);border-radius:10px;box-shadow:0 12px 36px rgba(0,0,0,.55)}
+#presence-toggle{display:block;width:100%;padding:9px 12px;color:var(--accent);font:12px "IBM Plex Mono",monospace;text-align:left}
+#presence-dock:not(.open) #presence-strip{display:none}
+#peek{position:fixed;z-index:80;width:min(390px,calc(100vw - 24px));padding:14px;background:var(--surface-elevated);border:1px solid var(--rule-highlight);border-radius:8px;box-shadow:0 14px 42px rgba(0,0,0,.65);pointer-events:auto}
+#peek h3{margin:0 0 8px;font-size:15px;color:var(--ink-bright)}
+#peek p{margin:5px 0;color:var(--muted);font-size:12px}
+#peek .peek-summary{color:var(--ink);max-height:9em;overflow:hidden}
+#peek button{margin-top:8px;color:var(--accent);font-size:12px}
+body.focus header,body.focus nav{display:none}
+body.focus .sprint{display:none}
+body.focus main{padding-top:16px;min-height:100vh}
 
 /* PAINEL DE DETALHES */
 #panel{
@@ -710,7 +736,9 @@ section.live-agents h2{
 @media (max-width: 760px){
   header, nav{padding-left: 16px; padding-right: 16px;}
   .sprint{margin-left: 16px; margin-right: 16px;}
-  main{grid-auto-flow: row; grid-auto-columns: auto; padding: 12px 16px 40px;}
+  main{grid-template-columns:1fr;padding:12px 16px 40px;}
+  #kanban{grid-auto-flow:row;grid-auto-columns:auto;grid-template-columns:1fr;overflow-x:visible}
+  #col-live-agents{position:static}
   #panel{padding: 24px 20px 40px;}
 }
 </style>
@@ -722,8 +750,12 @@ section.live-agents h2{
     <div class="brand-logo">FT</div>
     <h1>${esc(TITLE)} <span>// board</span></h1>
   </div>
-  <span class="count"><b>${byCol.todo.length}</b> a fazer · <b>${byCol["in-progress"].length}</b> em andamento · <b>${byCol.backlog.length}</b> backlog</span>
+  <span class="count" id="board-count"><b>${byCol.todo.length}</b> a fazer · <b>${byCol["in-progress"].length}</b> em andamento · <b>${byCol.backlog.length}</b> backlog</span>
   <div class="header-right">
+    <span class="mono" id="updated-at" title="Atualização automática">atualizado --:--:-- · <span id="refresh-countdown">10</span>s</span>
+    <button class="sim-btn" id="btn-refresh" title="Atualizar cards">↻</button>
+    <button class="sim-btn" id="btn-filters" aria-expanded="true">filtros</button>
+    <button class="sim-btn" id="btn-fullscreen" title="Tela cheia">⛶</button>
     <button class="sim-btn" id="btn-open-sim" title="Simular pulso de agente para testes">+ Pulso Agente</button>
     <span class="telemetry-badge offline" id="telemetry-status">
       <span class="pulse-dot"></span>
@@ -732,11 +764,11 @@ section.live-agents h2{
   </div>
 </header>
 
-<nav aria-label="Filtros">
-  ${universes.length ? `<div class="g"><span>universo</span>${universes.map(u => chip("u", u)).join("")}</div>` : ""}
-  ${sprints.length ? `<div class="g"><span>ciclo</span>${sprints.map(s => chip("s", s)).join("")}</div>` : ""}
-  ${people.length ? `<div class="g"><span>dono</span>${people.map(p => chip("a", p)).join("")}</div>` : ""}
-  ${others.length ? `<div class="g"><span>tipo</span>${others.map(o => chip("o", o)).join("")}</div>` : ""}
+<nav id="filters" aria-label="Filtros">
+  ${universes.length ? `<div class="g" data-filter-group="u"><button class="group-toggle" type="button">universo <b></b></button>${universes.map(u => chip("u", u)).join("")}</div>` : ""}
+  ${sprints.length ? `<div class="g" data-filter-group="s"><button class="group-toggle" type="button">ciclo <b></b></button>${sprints.map(s => chip("s", s)).join("")}</div>` : ""}
+  ${people.length ? `<div class="g" data-filter-group="a"><button class="group-toggle" type="button">dono <b></b></button>${people.map(p => chip("a", p)).join("")}</div>` : ""}
+  ${others.length ? `<div class="g" data-filter-group="o"><button class="group-toggle" type="button">tipo <b></b></button>${others.map(o => chip("o", o)).join("")}</div>` : ""}
   <button class="clear" id="clear" hidden>limpar filtros</button>
   <input id="q" type="search" placeholder="buscar id, título, label..." aria-label="Buscar">
 </nav>
@@ -756,6 +788,7 @@ ${sprintHtml}
   </section>
 
   <!-- Colunas do Kanban Padrão -->
+  <div id="kanban">
   ${COLUMNS.map(col => {
     const list = byCol[col.id];
     let items;
@@ -776,7 +809,15 @@ ${sprintHtml}
     <p class="empty" hidden>Nada aqui com esse filtro.</p>
   </section>`;
   }).join("\n")}
+  </div>
 </main>
+
+<aside id="presence-dock">
+  <button id="presence-toggle" aria-expanded="false">Harnesses · 0 · watcher parado</button>
+  <div class="presence" id="presence-strip"><span class="p"><span class="d"></span>sem watcher (make board)</span></div>
+</aside>
+
+<aside id="peek" hidden></aside>
 
 <div id="scrim"></div>
 
@@ -807,19 +848,81 @@ ${sprintHtml}
   </div>
 </div>
 
+<script type="application/json" id="board-data">${cardDataJson}</script>
+
 <script>
 (() => {
   // Estado de Filtros
   const state = { u: new Set(), s: new Set(), a: new Set(), o: new Set(), q: "" };
-  const cardsEl = [...document.querySelectorAll(".card")];
-  const chips = [...document.querySelectorAll(".chip")];
   const clear = document.getElementById("clear");
   const q = document.getElementById("q");
+  const kanban = document.getElementById("kanban");
+  const panel = document.getElementById("panel"), scrim = document.getElementById("scrim");
+  let boardData = JSON.parse(document.getElementById("board-data").textContent);
+  let openId = null;
+  let lastRefresh = Date.now();
+  const refreshSeconds = Math.max(1, Number(new URLSearchParams(location.search).get("refresh")) || 10);
+  const escText = value => String(value ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+
+  function filterData(card) {
+    return { u: card.labels.filter(label => label.startsWith("universe:")).map(label => label.slice(9)), s: card.labels.filter(label => /^(sprint|wave)-/.test(label)), o: card.labels.filter(label => !label.startsWith("universe:") && !/^(sprint|wave)-/.test(label)), a: card.assignee || "" };
+  }
+
+  function cardMarkup(card, movedIds) {
+    const filters = escText(JSON.stringify(filterData(card)));
+    const text = escText((card.shortId + " " + card.title + " " + card.labels.join(" ") + " " + (card.assignee || "")).toLowerCase());
+    return '<li class="card p-' + escText(card.priority) + (movedIds.has(card.id) ? ' moved' : '') + '" data-id="' + escText(card.id) + '" data-f="' + filters + '" data-text="' + text + '" tabindex="0">'
+      + '<div class="card-head"><span class="cid">' + escText(card.shortId) + '</span><span class="cpriority-pill ' + escText(card.priority) + '">' + escText(card.priority) + '</span></div>'
+      + '<span class="ctitle" tabindex="-1">' + escText(card.title) + '</span><span class="cmeta">'
+      + card.labels.map(label => '<i>' + escText(label) + '</i>').join('')
+      + (card.assignee ? '<b>' + escText(card.assignee) + '</b>' : '')
+      + (card.dueDate ? '<time datetime="' + escText(card.dueDate) + '">' + escText(card.dueDate) + '</time>' : '') + '</span></li>';
+  }
+
+  function detailMarkup(card) {
+    const column = boardData.columns.find(item => item.id === card.status)?.name || card.status;
+    const facts = [["Coluna", column], ["Prioridade", card.priority], card.assignee && ["Dono", card.assignee], card.dueDate && ["Alvo", card.dueDate], card.completedAt && ["Fechado em", card.completedAt.slice(0, 10)], card.modified && ["Modificado", card.modified.slice(0, 10)], ["Arquivo", card.file]].filter(Boolean);
+    return '<article class="detail" id="d-' + escText(card.id) + '" hidden><p class="cid">' + escText(card.shortId) + '</p><h2>' + escText(card.title) + '</h2><p class="labels">'
+      + card.labels.map(label => '<i>' + escText(label) + '</i>').join('') + '</p><dl>'
+      + facts.map(([key, value]) => '<dt>' + escText(key) + '</dt><dd>' + (key === "Arquivo" ? '<code>' + escText(value) + '</code>' : escText(value)) + '</dd>').join('')
+      + '</dl><div class="body">' + (card.bodyHtml || '<p class="empty">Sem descrição.</p>') + '</div></article>';
+  }
+
+  function renderBoard(data, movedIds = new Set()) {
+    boardData = data;
+    for (const column of data.columns) {
+      const section = kanban.querySelector('[data-col="' + CSS.escape(column.id) + '"]');
+      if (!section) continue;
+      const list = data.cards.filter(card => card.status === column.id);
+      let markup = '';
+      if (column.id === "todo" || column.id === "backlog") {
+        const groups = new Map();
+        for (const card of list) {
+          const group = card.labels.find(label => /^(sprint|wave)-/.test(label)) || "sem ciclo";
+          if (!groups.has(group)) groups.set(group, []);
+          groups.get(group).push(card);
+        }
+        markup = [...groups].map(([group, groupCards]) => '<li class="sprint-h" data-group="' + escText(group) + '">' + escText(group) + '</li>' + groupCards.map(card => cardMarkup(card, movedIds)).join('')).join('');
+      } else markup = list.map(card => cardMarkup(card, movedIds)).join('');
+      section.querySelector("ul").innerHTML = markup;
+    }
+    panel.querySelectorAll(".detail").forEach(item => item.remove());
+    panel.insertAdjacentHTML("beforeend", data.cards.map(detailMarkup).join(""));
+    const counts = Object.fromEntries(data.columns.map(column => [column.id, data.cards.filter(card => card.status === column.id).length]));
+    document.getElementById("board-count").innerHTML = '<b>' + (counts.todo || 0) + '</b> a fazer · <b>' + (counts["in-progress"] || 0) + '</b> em andamento · <b>' + (counts.backlog || 0) + '</b> backlog';
+    const simCard = document.getElementById("sim-card");
+    const selected = simCard.value;
+    simCard.innerHTML = data.cards.slice(0, 15).map(card => '<option value="' + escText(card.id) + '">' + escText(card.shortId + " - " + card.title.slice(0, 28)) + '</option>').join('');
+    if ([...simCard.options].some(option => option.value === selected)) simCard.value = selected;
+    if (openId && data.cards.some(card => card.id === openId)) openCard(openId, false);
+    else if (openId) closeCard();
+    applyFilters();
+  }
 
   function applyFilters() {
     const any = state.u.size || state.s.size || state.a.size || state.o.size || state.q;
     clear.hidden = !any;
-    for (const el of cardsEl) {
+    for (const el of document.querySelectorAll(".card")) {
       const f = JSON.parse(el.dataset.f);
       let ok = true;
       if (state.u.size && !f.u.some(x => state.u.has(x))) ok = false;
@@ -841,23 +944,23 @@ ${sprintHtml}
     }
   }
 
-  for (const c of chips) c.addEventListener("click", () => {
-    const set = state[c.dataset.g], v = c.dataset.v;
-    set.has(v) ? set.delete(v) : set.add(v);
-    c.setAttribute("aria-pressed", set.has(v));
+  document.getElementById("filters").addEventListener("click", event => {
+    const chip = event.target.closest(".chip");
+    if (!chip) return;
+    const set = state[chip.dataset.g], value = chip.dataset.v;
+    set.has(value) ? set.delete(value) : set.add(value);
+    chip.setAttribute("aria-pressed", set.has(value));
     applyFilters();
   });
   q.addEventListener("input", () => { state.q = q.value.trim().toLowerCase(); applyFilters(); });
   clear.addEventListener("click", () => {
     for (const k of ["u", "s", "a", "o"]) state[k].clear();
     state.q = ""; q.value = "";
-    chips.forEach(c => c.setAttribute("aria-pressed", "false"));
+    document.querySelectorAll(".chip").forEach(chip => chip.setAttribute("aria-pressed", "false"));
     applyFilters();
   });
 
   // Painel de Detalhes
-  const panel = document.getElementById("panel"), scrim = document.getElementById("scrim");
-  let openId = null;
   function openCard(id, push = true) {
     const d = document.getElementById("d-" + id);
     if (!d) return;
@@ -871,13 +974,103 @@ ${sprintHtml}
     panel.classList.remove("open"); scrim.classList.remove("open");
     openId = null; history.replaceState(null, "", location.pathname);
   }
-  for (const el of cardsEl) {
-    el.addEventListener("click", () => openCard(el.dataset.id));
-  }
+  kanban.addEventListener("click", event => { const card = event.target.closest(".card"); if (card) openCard(card.dataset.id); });
+  kanban.addEventListener("keydown", event => { const card = event.target.closest(".card"); if (card && (event.key === "Enter" || event.key === " ")) { event.preventDefault(); openCard(card.dataset.id); } });
   document.getElementById("close").addEventListener("click", closeCard);
   scrim.addEventListener("click", closeCard);
   document.addEventListener("keydown", e => { if (e.key === "Escape" && openId) closeCard(); });
   if (location.hash.length > 1) openCard(decodeURIComponent(location.hash.slice(1)), false);
+
+  async function refreshCards() {
+    const previous = new Map(boardData.cards.map(card => [card.id, card]));
+    try {
+      const response = await fetch("/api/cards", { cache: "no-store" });
+      if (!response.ok) throw new Error("HTTP " + response.status);
+      const next = await response.json();
+      const nextIds = new Set(next.cards.map(card => card.id));
+      const removed = [...previous.keys()].filter(id => !nextIds.has(id));
+      for (const id of removed) document.querySelector('.card[data-id="' + CSS.escape(id) + '"]')?.classList.add("removing");
+      if (removed.length) await new Promise(resolve => setTimeout(resolve, 170));
+      const moved = new Set(next.cards.filter(card => previous.has(card.id) && previous.get(card.id).status !== card.status).map(card => card.id));
+      renderBoard(next, moved);
+      lastRefresh = Date.now();
+      document.getElementById("updated-at").firstChild.textContent = "atualizado " + new Date(lastRefresh).toLocaleTimeString() + " · ";
+      return true;
+    } catch (error) {
+      console.error("[board] Falha ao atualizar cards:", error);
+      return false;
+    }
+  }
+
+  document.getElementById("btn-refresh").addEventListener("click", refreshCards);
+  setInterval(() => {
+    const elapsed = Math.floor((Date.now() - lastRefresh) / 1000);
+    const remaining = Math.max(0, refreshSeconds - elapsed);
+    document.getElementById("refresh-countdown").textContent = String(remaining);
+    if (!document.hidden && elapsed >= refreshSeconds) refreshCards();
+  }, 1000);
+
+  const filters = document.getElementById("filters");
+  const filtersButton = document.getElementById("btn-filters");
+  filtersButton.addEventListener("click", () => {
+    filters.hidden = !filters.hidden;
+    filtersButton.setAttribute("aria-expanded", String(!filters.hidden));
+    localStorage.setItem("board.filters.open", String(!filters.hidden));
+  });
+  if (localStorage.getItem("board.filters.open") === "false") filtersButton.click();
+  for (const group of filters.querySelectorAll(".g")) {
+    const key = "board.filters." + group.dataset.filterGroup + ".open";
+    const button = group.querySelector(".group-toggle");
+    const updateGroup = () => { button.querySelector("b").textContent = group.classList.contains("collapsed") ? "· " + state[group.dataset.filterGroup].size : ""; };
+    if (localStorage.getItem(key) === "false") group.classList.add("collapsed");
+    updateGroup();
+    button.addEventListener("click", () => { group.classList.toggle("collapsed"); localStorage.setItem(key, String(!group.classList.contains("collapsed"))); updateGroup(); });
+    group.addEventListener("click", event => { if (event.target.closest(".chip")) updateGroup(); });
+  }
+
+  const boardWrapper = document.querySelector("main");
+  const fullscreenButton = document.getElementById("btn-fullscreen");
+  fullscreenButton.addEventListener("click", async () => {
+    if (typeof boardWrapper.requestFullscreen === "function") {
+      if (document.fullscreenElement) await document.exitFullscreen();
+      else await boardWrapper.requestFullscreen();
+    } else document.body.classList.toggle("focus");
+  });
+  document.addEventListener("fullscreenchange", () => { fullscreenButton.textContent = document.fullscreenElement ? "⤢" : "⛶"; });
+
+  const presenceDock = document.getElementById("presence-dock");
+  const presenceToggle = document.getElementById("presence-toggle");
+  const setPresenceOpen = open => { presenceDock.classList.toggle("open", open); presenceToggle.setAttribute("aria-expanded", String(open)); localStorage.setItem("board.presence.open", String(open)); };
+  setPresenceOpen(localStorage.getItem("board.presence.open") === "true");
+  presenceToggle.addEventListener("click", () => setPresenceOpen(!presenceDock.classList.contains("open")));
+
+  const peek = document.getElementById("peek");
+  let peekTimer = null;
+  function closePeek() { clearTimeout(peekTimer); peek.hidden = true; }
+  function showPeek(cardElement) {
+    const card = boardData.cards.find(item => item.id === cardElement.dataset.id);
+    if (!card) return;
+    const column = boardData.columns.find(item => item.id === card.status)?.name || card.status;
+    peek.innerHTML = '<h3>' + escText(card.title) + '</h3><p>' + escText(column + " · " + card.priority + (card.assignee ? " · " + card.assignee : "")) + '</p><p>' + card.labels.map(escText).join(" · ") + '</p><p class="peek-summary">' + escText(card.summary || "Sem descrição.") + '</p><p>Verify: ' + Number(card.verify?.checked || 0) + '/' + Number(card.verify?.total || 0) + '</p><button type="button">abrir</button>';
+    peek.querySelector("button").addEventListener("click", event => { event.stopPropagation(); closePeek(); openCard(card.id); });
+    peek.hidden = false;
+    const rect = cardElement.getBoundingClientRect();
+    const own = peek.getBoundingClientRect();
+    peek.style.left = Math.max(12, Math.min(innerWidth - own.width - 12, rect.right + 10)) + "px";
+    peek.style.top = Math.max(12, Math.min(innerHeight - own.height - 12, rect.top)) + "px";
+  }
+  function schedulePeek(card) { clearTimeout(peekTimer); peekTimer = setTimeout(() => showPeek(card), 350); }
+  kanban.addEventListener("mouseover", event => { const title = event.target.closest(".ctitle"); if (title) schedulePeek(title.closest(".card")); });
+  kanban.addEventListener("mouseout", event => { if (event.target.closest(".card") && !event.relatedTarget?.closest?.("#peek")) closePeek(); });
+  kanban.addEventListener("focusin", event => { const card = event.target.closest(".card"); if (card) schedulePeek(card); });
+  kanban.addEventListener("focusout", event => { if (event.target.closest(".card")) closePeek(); });
+  peek.addEventListener("mouseleave", closePeek);
+  document.addEventListener("keydown", event => {
+    if (event.key !== "Escape") return;
+    closePeek();
+    if (presenceDock.classList.contains("open")) setPresenceOpen(false);
+    if (document.body.classList.contains("focus")) document.body.classList.remove("focus");
+  });
 
   // -------------------------------------------------------------
   // TELEMETRIA DE AGENTES ATIVOS EM TEMPO REAL
@@ -889,6 +1082,23 @@ ${sprintHtml}
   const telemetryText = document.getElementById("telemetry-text");
 
   const agentsMap = new Map();
+  const presenceStrip = document.getElementById("presence-strip");
+  const HARNESS_ICON = { agy: "🪐", "antigravity-ide": "🪐", claude: "🧠", "claude-remote": "🧠", codex: "⚡", gemini: "✨", opencode: "🧩", cursor: "🖱️" };
+  // Faixa "Harnesses abertos": processo de harness com cwd em worktree, trabalhando ou não.
+  // Só quem está trabalhando vira card em "Agentes ativos" (regra do watcher).
+  function renderPresence(p) {
+    const items = (p && p.items) || [];
+    const when = p && p.updatedAt ? new Date(p.updatedAt).toLocaleTimeString() : "";
+    presenceToggle.textContent = 'Harnesses · ' + items.length + (p && p.stale ? ' · watcher parado' : '');
+    let html = '<span class="t">Harnesses abertos · ' + items.length + (when ? ' · ' + escText(when) : '') + (p && p.stale ? ' · watcher parado' : '') + '</span>';
+    if (!items.length) html += '<span class="p"><span class="d"></span>' + (p && p.updatedAt ? 'nenhum harness em worktree' : 'sem watcher (make board)') + '</span>';
+    for (const it of items) {
+      html += '<span class="p ' + (it.working ? 'on' : '') + '" title="' + escText((it.path || '') + ' · ' + (it.pids || 0) + ' processo(s)' + (it.dirty ? ' · ' + it.dirty + ' alterado(s)' : '')) + '">'
+        + '<span class="d"></span>' + (HARNESS_ICON[it.harness] || '🛡️') + ' ' + escText(it.agent || it.harness) + (it.model ? ' <span class="mono agent-model">' + escText(it.model) + '</span>' : '')
+        + ' <span class="b mono">' + escText(it.branch || '?') + '</span>' + (it.working ? ' · ativo' : ' · parado') + '</span>';
+    }
+    presenceStrip.innerHTML = html;
+  }
 
   function getAgentDomId(id) {
     return "ag-" + String(id).replace(/[^a-zA-Z0-9_-]/g, "_");
@@ -932,24 +1142,24 @@ ${sprintHtml}
         liveContainer.appendChild(cardEl);
       }
 
-      const harnessIcon = ag.harness === "agy" ? "🪐" : ag.harness === "claude" ? "🧠" : ag.harness === "codex" ? "⚡" : "🛡️";
-      const harnessClass = "harness-" + (ag.harness || "agy");
+      const harnessIcon = HARNESS_ICON[ag.harness] || "🛡️";
+      const harnessClass = ["agy", "claude", "codex", "odin"].includes(ag.harness) ? "harness-" + ag.harness : "harness-agy";
       const elapsed = formatDuration(now - (ag.startedAt || now));
 
       cardEl.innerHTML = \`
         <div class="agent-card-top">
-          <span class="harness-badge \${harnessClass}">\${harnessIcon} \${ag.agent || ag.harness}</span>
-          <button class="agent-done-btn" data-done-id="\${ag.id}" title="Marcar como concluído">concluir ✓</button>
+          <span class="harness-badge \${harnessClass}" title="\${escText(ag.model ? "modelo: " + ag.model : "modelo não informado")}">\${harnessIcon} \${escText(ag.agent || ag.harness)}\${ag.model ? ' · <span class="mono agent-model">' + escText(ag.model) + "</span>" : ""}</span>
+          <button class="agent-done-btn" title="Marcar como concluído">concluir ✓</button>
         </div>
-        <div class="agent-target-card" data-card-id="\${ag.cardId}">
-          <span>🎯 \${ag.cardId}</span>
+        <div class="agent-target-card">
+          <span>🎯 \${escText(ag.cardId)}</span>
         </div>
         <div class="agent-action">
-          <span>\${ag.action || "Trabalhando no card..."}</span>
+          <span>\${escText(ag.action || "Trabalhando no card...")}</span>
         </div>
         <div class="agent-footer">
-          <span class="agent-timer mono">há \${elapsed}</span>
-          <span class="mono" style="color: #00ff9d">• \${ag.status}</span>
+          <span class="agent-timer mono">há \${escText(elapsed)}</span>
+          <span class="mono" style="color: #00ff9d">• \${escText(ag.status)}</span>
         </div>
       \`;
 
@@ -1010,9 +1220,9 @@ ${sprintHtml}
         const { id } = JSON.parse(e.data);
         removeAgent(id);
       });
+      evtSource.addEventListener("presence", (e) => renderPresence(JSON.parse(e.data)));
       evtSource.addEventListener("board_updated", () => {
-        // Recarrega cards suavemente
-        console.log("[board] Atualizado pelo servidor.");
+        refreshCards();
       });
       evtSource.onerror = () => {
         telemetryBadge.classList.add("offline");

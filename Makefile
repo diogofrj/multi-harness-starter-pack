@@ -1,4 +1,4 @@
-.PHONY: help install dev board lint typecheck test test-watch deploy-staging deploy-prod worktree-new worktree-list worktree-clean
+.PHONY: help install dev board board-status board-stop board-smoke pulse-watch lint typecheck test test-watch deploy-staging deploy-prod worktree-new worktree-list worktree-clean
 
 help: ## Exibe os comandos disponíveis
 	@echo "Comandos disponíveis:"
@@ -21,9 +21,25 @@ dev: ## Inicia o ambiente local
 		if [ -f pnpm-lock.yaml ]; then pnpm run dev; else npm run dev; fi; \
 	else echo "Nenhum comando dev configurado"; exit 2; fi
 
-board: ## Inicia o board local com telemetria
-	@echo "🪐 Board local: http://localhost:3000"
-	@if command -v docker >/dev/null 2>&1 && [ -f compose.yaml ]; then docker compose up; else node server.mjs; fi
+board: ## Sobe (ou reaproveita) o board local e o watcher de presença
+	@if curl -sf -m 2 "http://localhost:$${BOARD_PORT:-3000}/api/agents" >/dev/null 2>&1; then echo "board já no ar"; \
+	else setsid nohup env BOARD_PORT=$${BOARD_PORT:-3000} node $(CURDIR)/server.mjs >/tmp/$(notdir $(CURDIR))-board.log 2>&1 </dev/null & sleep 1; echo "board iniciado (log /tmp/$(notdir $(CURDIR))-board.log)"; fi
+	@scripts/worktree-pulse-daemon.sh status >/dev/null 2>&1 || scripts/worktree-pulse-daemon.sh start
+	@echo "🪐 Board local: http://localhost:$${BOARD_PORT:-3000}"
+
+board-status: ## Exibe o estado do board e do watcher
+	@curl -sf -m 2 "http://localhost:$${BOARD_PORT:-3000}/api/agents" >/dev/null 2>&1 && echo "board: no ar em http://localhost:$${BOARD_PORT:-3000}" || echo "board: fora do ar"
+	@scripts/worktree-pulse-daemon.sh status || true
+
+board-stop: ## Para o watcher e este servidor local
+	@scripts/worktree-pulse-daemon.sh stop || true
+	@pkill -f "node $(CURDIR)/[s]erver.mjs" 2>/dev/null && echo "board parado" || echo "board não estava rodando"
+
+board-smoke: ## Executa o smoke Playwright em uma porta isolada
+	@node scripts/board-smoke.mjs
+
+pulse-watch: ## Publica presença dos harnesses por worktree
+	@node scripts/worktree-pulse.mjs
 
 lint: ## Executa linters; falha se nenhum estiver configurado
 	@set -e; ran=0; \
