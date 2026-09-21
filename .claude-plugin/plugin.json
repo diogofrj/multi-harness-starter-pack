@@ -11,5 +11,5 @@
   "repository": "https://github.com/diogofrj/multi-harness-starter-pack",
   "license": "MIT",
   "keywords": ["multi-harness", "agents", "security", "code-review", "worktrees", "mcp"],
-  "skills": ["./skills/"]
+  "skills": ["../.claude/skills/"]
 }
