@@ -861,6 +861,7 @@ ${sprintHtml}
   let boardData = JSON.parse(document.getElementById("board-data").textContent);
   let openId = null;
   let lastRefresh = Date.now();
+  const movedUntil = new Map();
   const refreshSeconds = Math.max(1, Number(new URLSearchParams(location.search).get("refresh")) || 10);
   const escText = value => String(value ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 
@@ -991,8 +992,10 @@ ${sprintHtml}
       const removed = [...previous.keys()].filter(id => !nextIds.has(id));
       for (const id of removed) document.querySelector('.card[data-id="' + CSS.escape(id) + '"]')?.classList.add("removing");
       if (removed.length) await new Promise(resolve => setTimeout(resolve, 170));
-      const moved = new Set(next.cards.filter(card => previous.has(card.id) && previous.get(card.id).status !== card.status).map(card => card.id));
-      renderBoard(next, moved);
+      const now = Date.now();
+      for (const card of next.cards) if (previous.has(card.id) && previous.get(card.id).status !== card.status) movedUntil.set(card.id, now + 4_000);
+      for (const [id, until] of movedUntil) if (until <= now || !nextIds.has(id)) movedUntil.delete(id);
+      renderBoard(next, new Set(movedUntil.keys()));
       lastRefresh = Date.now();
       document.getElementById("updated-at").firstChild.textContent = "atualizado " + new Date(lastRefresh).toLocaleTimeString() + " · ";
       return true;

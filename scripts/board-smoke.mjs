@@ -76,6 +76,7 @@ try {
   });
 
   await test("refresh por SSE move card e marca .moved", async () => {
+    await page.getByText("Live Telemetry", { exact: true }).waitFor({ timeout: 2_000 });
     writeFileSync(paths[0], fixture("fm-101", "Card Alfa", "review", "Codex"));
     await page.locator('[data-col="review"] .card[data-id="fm-101"].moved').waitFor({ timeout: 3_000 });
   });
