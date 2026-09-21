@@ -14,7 +14,11 @@ alive() { [ -f "$PIDFILE" ] && kill -0 "$(cat "$PIDFILE")" 2>/dev/null; }
 case "${1:-status}" in
   start)
     if alive; then echo "watcher já ativo (pid $(cat "$PIDFILE"))"; exit 0; fi
-    BOARD_AUTOSTART="${BOARD_AUTOSTART:-1}" setsid nohup node "$DIR/worktree-pulse.mjs" --interval "$INTERVAL" --repo "$REPO" >"$LOG" 2>&1 < /dev/null &
+    if command -v setsid >/dev/null 2>&1; then
+      BOARD_AUTOSTART="${BOARD_AUTOSTART:-1}" setsid nohup node "$DIR/worktree-pulse.mjs" --interval "$INTERVAL" --repo "$REPO" >"$LOG" 2>&1 < /dev/null &
+    else
+      BOARD_AUTOSTART="${BOARD_AUTOSTART:-1}" nohup node "$DIR/worktree-pulse.mjs" --interval "$INTERVAL" --repo "$REPO" >"$LOG" 2>&1 < /dev/null &
+    fi
     echo $! > "$PIDFILE"
     sleep 1
     if alive; then echo "watcher iniciado (pid $(cat "$PIDFILE"), log $LOG, board http://localhost:${BOARD_PORT:-3000})"; else echo "falhou; veja $LOG"; exit 1; fi

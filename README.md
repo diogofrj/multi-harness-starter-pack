@@ -57,7 +57,7 @@ BOARD_PORT=3000 make board
 make board-smoke
 ```
 
-O board lê cards Markdown de `.devtool/features/`, expõe `/api/cards`, recebe pulsos efêmeros e usa `BOARD_PORT` (3000 por padrão). Atualizações chegam por SSE e têm polling de 10 segundos como fallback. O dock “Harnesses abertos” mostra presença separada dos agentes ativos. A configuração portátil, inclusive a regra que converte branches em IDs de card, está em `.devtool/board.json`.
+O board lê cards Markdown de `.devtool/features/`, expõe `/api/cards`, recebe pulsos efêmeros e usa `BOARD_PORT` (3000 por padrão). Atualizações chegam por SSE e têm polling de 10 segundos como fallback. O dock “Harnesses abertos” mostra presença separada dos agentes ativos. A configuração portátil, inclusive a regra que converte branches em IDs de card, está em `.devtool/board.json`. O alvo `make board` grava o HTML efêmero em `/tmp`; `BOARD_DIST` permite escolher outro caminho gravável.
 
 ```bash
 node scripts/agent-pulse.mjs --harness codex --card bootstrap-01 --action "Executando Wave 0"

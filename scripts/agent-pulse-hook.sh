@@ -43,5 +43,9 @@ case "$EVENT" in
     STATUS="working"; ACTION="$TOOL"; [ -n "$DETAIL" ] && ACTION="$TOOL: $DETAIL" ;;
 esac
 
-BOARD_AUTOSTART=0 timeout 4 node "$DIR/agent-pulse.mjs" --harness claude --agent "$AGENT" --card "$CARD" --action "$ACTION" --status "$STATUS" ${TTL:+--ttl "$TTL"} ${MODEL:+--model "$MODEL"} >/dev/null 2>&1 || true
+if command -v timeout >/dev/null 2>&1; then
+  BOARD_AUTOSTART=0 timeout 4 node "$DIR/agent-pulse.mjs" --harness claude --agent "$AGENT" --card "$CARD" --action "$ACTION" --status "$STATUS" ${TTL:+--ttl "$TTL"} ${MODEL:+--model "$MODEL"} >/dev/null 2>&1 || true
+else
+  BOARD_AUTOSTART=0 node "$DIR/agent-pulse.mjs" --harness claude --agent "$AGENT" --card "$CARD" --action "$ACTION" --status "$STATUS" ${TTL:+--ttl "$TTL"} ${MODEL:+--model "$MODEL"} >/dev/null 2>&1 || true
+fi
 exit 0

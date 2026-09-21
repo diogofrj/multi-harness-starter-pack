@@ -3,7 +3,7 @@
 // Zero dependências externas (apenas Node.js nativo).
 //
 // Uso: node server.mjs
-// Porta: BOARD_PORT ou PORT (padrão 3003; a 3000 desta máquina é a Evolution API)
+// Porta: BOARD_PORT, PORT ou o valor definido em .devtool/board.json.
 
 import http from "node:http";
 import fs from "node:fs";
@@ -18,7 +18,7 @@ const boardConfig = loadBoardConfig(__dirname);
 const PORT = Number(process.env.BOARD_PORT || process.env.PORT || boardConfig.port);
 const FEATURES_DIR = path.join(__dirname, ".devtool", "features");
 const BUILD_SCRIPT = path.join(__dirname, "scripts", "build-board.mjs");
-const DIST_INDEX = path.join(__dirname, "dist", "index.html");
+const DIST_INDEX = process.env.BOARD_DIST ? path.resolve(process.env.BOARD_DIST) : path.join(__dirname, "dist", "index.html");
 
 // Mapa de agentes ativos: Map<id, AgentActivity>
 // id = `${harness}:${cardId}`
@@ -61,7 +61,7 @@ function broadcastSSE(event, data) {
 
 // Regenera o board estático
 function triggerBuild(callback) {
-  execFile("node", [BUILD_SCRIPT], { cwd: __dirname }, (err) => {
+  execFile("node", [BUILD_SCRIPT, FEATURES_DIR, DIST_INDEX], { cwd: __dirname }, (err) => {
     if (err) console.error("Erro ao rebuildar board:", err.message);
     else {
       broadcastSSE("board_updated", { timestamp: Date.now() });

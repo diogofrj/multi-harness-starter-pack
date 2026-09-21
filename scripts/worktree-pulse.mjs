@@ -12,7 +12,7 @@
 // O ticket (card) é inferido da branch do worktree. Arquivo tocado recentemente NÃO é presença.
 //
 // Uso: node scripts/worktree-pulse.mjs [--once] [--interval 30] [--repo <path>] [--verbose]
-// Env:  BOARD_PORT (padrão 3003), BOARD_AUTOSTART=0 para não subir o board.
+// Env:  BOARD_PORT (padrão 3000), BOARD_AUTOSTART=0 para não subir o board.
 
 import { execFileSync, spawn } from "node:child_process";
 import { readdirSync, readFileSync, readlinkSync } from "node:fs";
@@ -20,7 +20,7 @@ import os from "node:os";
 import http from "node:http";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { inferCard } from "./board-config.mjs";
+import { inferCard, loadBoardConfig } from "./board-config.mjs";
 
 const args = process.argv.slice(2);
 const arg = (f, d = null) => { const i = args.indexOf(f); return i !== -1 && i + 1 < args.length ? args[i + 1] : d; };
@@ -30,6 +30,7 @@ const INTERVAL_S = Number(arg("--interval", 30));
 const REPO = path.resolve(arg("--repo", path.join(path.dirname(fileURLToPath(import.meta.url)), "..")));
 const PORT = Number(process.env.BOARD_PORT || 3000);
 const AUTOSTART = process.env.BOARD_AUTOSTART !== "0";
+const BOARD_CONFIG = loadBoardConfig(REPO);
 const CPU_WORKING_JIFFIES = 100; // ~1 s de CPU no intervalo (3 % de um core em 30 s); abaixo disso é harness parado
 
 const git = (cwd, ...a) => execFileSync("git", a, { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
@@ -74,7 +75,10 @@ function listWorktrees() {
 // Foto de /proc: pid -> { ppid, cwd, cmd, cpu }
 function snapshotProcs() {
   const procs = new Map();
-  for (const name of readdirSync("/proc")) {
+  let names;
+  try { names = readdirSync("/proc"); }
+  catch { return procs; }
+  for (const name of names) {
     if (!/^\d+$/.test(name)) continue;
     const pid = Number(name);
     let stat, cmd, cwd;
@@ -108,7 +112,7 @@ function harnessAncestor(procs, p) {
 
 // chave harness:worktree -> { harness, agent, card, branch, path, pids: Map<pid, cpu> }
 function detectPresence(procs, worktrees) {
-  const wts = worktrees.map(w => ({ ...w, card: inferCard(w.branch) })).filter(w => w.card);
+  const wts = worktrees.map(w => ({ ...w, card: inferCard(w.branch, BOARD_CONFIG) })).filter(w => w.card);
   wts.sort((a, b) => b.path.length - a.path.length); // worktree mais específico primeiro
   const found = new Map();
   for (const p of procs.values()) {

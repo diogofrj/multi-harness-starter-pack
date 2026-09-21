@@ -856,17 +856,42 @@ ${sprintHtml}
   const state = { u: new Set(), s: new Set(), a: new Set(), o: new Set(), q: "" };
   const clear = document.getElementById("clear");
   const q = document.getElementById("q");
+  const filters = document.getElementById("filters");
   const kanban = document.getElementById("kanban");
   const panel = document.getElementById("panel"), scrim = document.getElementById("scrim");
   let boardData = JSON.parse(document.getElementById("board-data").textContent);
   let openId = null;
   let lastRefresh = Date.now();
+  let refreshing = false;
   const movedUntil = new Map();
   const refreshSeconds = Math.max(1, Number(new URLSearchParams(location.search).get("refresh")) || 10);
   const escText = value => String(value ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 
   function filterData(card) {
     return { u: card.labels.filter(label => label.startsWith("universe:")).map(label => label.slice(9)), s: card.labels.filter(label => /^(sprint|wave)-/.test(label)), o: card.labels.filter(label => !label.startsWith("universe:") && !/^(sprint|wave)-/.test(label)), a: card.assignee || "" };
+  }
+
+  function syncFilterGroups(data) {
+    const labels = [...new Set(data.cards.flatMap(card => card.labels))].sort();
+    const definitions = {
+      u: labels.filter(label => label.startsWith("universe:")).map(label => label.slice(9)),
+      s: labels.filter(label => /^(sprint|wave)-/.test(label)),
+      a: [...new Set(data.cards.map(card => card.assignee).filter(Boolean))].sort(),
+      o: labels.filter(label => !label.startsWith("universe:") && !/^(sprint|wave)-/.test(label)),
+    };
+    const names = { u: "universo", s: "ciclo", a: "dono", o: "tipo" };
+    for (const key of ["u", "s", "a", "o"]) {
+      const values = definitions[key];
+      for (const selected of [...state[key]]) if (!values.includes(selected)) state[key].delete(selected);
+      let group = filters.querySelector('[data-filter-group="' + key + '"]');
+      if (!values.length) { group?.remove(); continue; }
+      if (!group) { group = document.createElement("div"); group.className = "g"; group.dataset.filterGroup = key; filters.insertBefore(group, clear); }
+      const collapsed = localStorage.getItem("board.filters." + key + ".open") === "false";
+      group.classList.toggle("collapsed", collapsed);
+      group.innerHTML = '<button class="group-toggle" type="button">' + names[key] + ' <b></b></button>'
+        + values.map(value => '<button class="chip" data-g="' + key + '" data-v="' + escText(value) + '" aria-pressed="' + state[key].has(value) + '">' + escText(value) + '</button>').join('');
+    }
+    updateFilterGroupLabels();
   }
 
   function cardMarkup(card, movedIds) {
@@ -917,6 +942,7 @@ ${sprintHtml}
     if ([...simCard.options].some(option => option.value === selected)) simCard.value = selected;
     if (openId && data.cards.some(card => card.id === openId)) openCard(openId, false);
     else if (openId) closeCard();
+    syncFilterGroups(data);
     applyFilters();
   }
 
@@ -946,12 +972,21 @@ ${sprintHtml}
   }
 
   document.getElementById("filters").addEventListener("click", event => {
+    const groupToggle = event.target.closest(".group-toggle");
+    if (groupToggle) {
+      const group = groupToggle.closest(".g");
+      group.classList.toggle("collapsed");
+      localStorage.setItem("board.filters." + group.dataset.filterGroup + ".open", String(!group.classList.contains("collapsed")));
+      updateFilterGroupLabels();
+      return;
+    }
     const chip = event.target.closest(".chip");
     if (!chip) return;
     const set = state[chip.dataset.g], value = chip.dataset.v;
     set.has(value) ? set.delete(value) : set.add(value);
     chip.setAttribute("aria-pressed", set.has(value));
     applyFilters();
+    updateFilterGroupLabels();
   });
   q.addEventListener("input", () => { state.q = q.value.trim().toLowerCase(); applyFilters(); });
   clear.addEventListener("click", () => {
@@ -959,6 +994,7 @@ ${sprintHtml}
     state.q = ""; q.value = "";
     document.querySelectorAll(".chip").forEach(chip => chip.setAttribute("aria-pressed", "false"));
     applyFilters();
+    updateFilterGroupLabels();
   });
 
   // Painel de Detalhes
@@ -983,6 +1019,9 @@ ${sprintHtml}
   if (location.hash.length > 1) openCard(decodeURIComponent(location.hash.slice(1)), false);
 
   async function refreshCards() {
+    if (refreshing) return false;
+    refreshing = true;
+    lastRefresh = Date.now();
     const previous = new Map(boardData.cards.map(card => [card.id, card]));
     try {
       const response = await fetch("/api/cards", { cache: "no-store" });
@@ -1002,6 +1041,8 @@ ${sprintHtml}
     } catch (error) {
       console.error("[board] Falha ao atualizar cards:", error);
       return false;
+    } finally {
+      refreshing = false;
     }
   }
 
@@ -1013,7 +1054,6 @@ ${sprintHtml}
     if (!document.hidden && elapsed >= refreshSeconds) refreshCards();
   }, 1000);
 
-  const filters = document.getElementById("filters");
   const filtersButton = document.getElementById("btn-filters");
   filtersButton.addEventListener("click", () => {
     filters.hidden = !filters.hidden;
@@ -1021,15 +1061,13 @@ ${sprintHtml}
     localStorage.setItem("board.filters.open", String(!filters.hidden));
   });
   if (localStorage.getItem("board.filters.open") === "false") filtersButton.click();
-  for (const group of filters.querySelectorAll(".g")) {
-    const key = "board.filters." + group.dataset.filterGroup + ".open";
-    const button = group.querySelector(".group-toggle");
-    const updateGroup = () => { button.querySelector("b").textContent = group.classList.contains("collapsed") ? "· " + state[group.dataset.filterGroup].size : ""; };
-    if (localStorage.getItem(key) === "false") group.classList.add("collapsed");
-    updateGroup();
-    button.addEventListener("click", () => { group.classList.toggle("collapsed"); localStorage.setItem(key, String(!group.classList.contains("collapsed"))); updateGroup(); });
-    group.addEventListener("click", event => { if (event.target.closest(".chip")) updateGroup(); });
+  function updateFilterGroupLabels() {
+    for (const group of filters.querySelectorAll(".g")) {
+      const count = state[group.dataset.filterGroup].size;
+      group.querySelector(".group-toggle b").textContent = group.classList.contains("collapsed") ? "· " + count : "";
+    }
   }
+  syncFilterGroups(boardData);
 
   const boardWrapper = document.querySelector("main");
   const fullscreenButton = document.getElementById("btn-fullscreen");

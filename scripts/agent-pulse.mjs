@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 // scripts/agent-pulse.mjs — Envia telemetria de atividade de um agente para o board local.
 // Uso:
-//   node scripts/agent-pulse.mjs --harness agy --card fm-000 --action "Refatorando CSS"
-//   node scripts/agent-pulse.mjs --harness claude --card fm-000 --status done
-//   node scripts/agent-pulse.mjs --harness claude --card fm-003 --action "executando: vitest" --ttl 600000
+//   node scripts/agent-pulse.mjs --harness agy --card bootstrap-01 --action "Refatorando CSS"
+//   node scripts/agent-pulse.mjs --harness claude --card bootstrap-01 --status done
+//   node scripts/agent-pulse.mjs --harness claude --card APP-003 --action "executando: vitest" --ttl 600000
 //
 // Pode ser chamado em hooks do Claude Code, scripts de automação ou antes/depois de tarefas.
 
@@ -39,7 +39,7 @@ const serverPath = join(repoRoot, "server.mjs");
 
 if (!cardId) {
   console.error("❌ Uso incorreto: --card <id-do-card> é obrigatório.");
-  console.error('Exemplo: node scripts/agent-pulse.mjs --harness agy --card fm-000 --action "Ajustando UI"');
+  console.error('Exemplo: node scripts/agent-pulse.mjs --harness agy --card bootstrap-01 --action "Ajustando UI"');
   process.exit(1);
 }
 

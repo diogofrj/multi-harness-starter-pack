@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 import { createRequire } from "node:module";
-import { spawn } from "node:child_process";
+import { execFileSync, spawn } from "node:child_process";
 import { cpSync, mkdtempSync, mkdirSync, readdirSync, rmSync, writeFileSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
+import { delimiter, dirname, join, resolve } from "node:path";
 import { homedir, tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 
@@ -11,6 +11,8 @@ let chromium;
 try { ({ chromium } = require("playwright")); }
 catch {
   const candidates = [resolve(dirname(process.execPath), "../lib/node_modules/playwright")];
+  for (const root of (process.env.NODE_PATH || "").split(delimiter).filter(Boolean)) candidates.push(join(root, "playwright"));
+  try { candidates.push(join(execFileSync("npm", ["root", "-g"], { encoding: "utf8" }).trim(), "playwright")); } catch {}
   try {
     for (const version of readdirSync(join(homedir(), ".nvm", "versions", "node"))) candidates.push(join(homedir(), ".nvm", "versions", "node", version, "lib", "node_modules", "playwright"));
   } catch {}
@@ -33,7 +35,7 @@ mkdirSync(features, { recursive: true });
 for (const file of ["server.mjs", "scripts/build-board.mjs", "scripts/board-cards.mjs", "scripts/board-config.mjs"]) cpSync(join(sourceRoot, file), join(root, file));
 writeFileSync(join(root, ".devtool", "board.json"), JSON.stringify({ port: 3103, cardIdPattern: "FM-([0-9]{3}[a-z]?)", cardIdFormat: "fm-$1", mainBranchCard: "fm-001", specialCases: [] }));
 
-const fixture = (id, title, status, owner) => `---\nid: ${id}\nstatus: ${status}\npriority: high\nassignee: ${owner}\nlabels: ["wave-2b", "board"]\norder: a${id}\n---\n# ${title}\n\nDescrição segura de ${title}.\n\n## Verify\n- [x] primeiro\n- [ ] segundo\n`;
+const fixture = (id, title, status, owner, extraLabel = null) => `---\nid: ${id}\nstatus: ${status}\npriority: high\nassignee: ${owner}\nlabels: ${JSON.stringify(["wave-2b", "board", ...(extraLabel ? [extraLabel] : [])])}\norder: a${id}\n---\n# ${title}\n\nDescrição segura de ${title}.\n\n## Verify\n- [x] primeiro\n- [ ] segundo\n`;
 const paths = [join(features, "fm-101.md"), join(features, "fm-102.md"), join(features, "fm-103.md")];
 writeFileSync(paths[0], fixture("fm-101", "Card Alfa", "todo", "Codex"));
 writeFileSync(paths[1], fixture("fm-102", "Card Beta", "backlog", "Sonnet"));
@@ -77,8 +79,9 @@ try {
 
   await test("refresh por SSE move card e marca .moved", async () => {
     await page.getByText("Live Telemetry", { exact: true }).waitFor({ timeout: 2_000 });
-    writeFileSync(paths[0], fixture("fm-101", "Card Alfa", "review", "Codex"));
+    writeFileSync(paths[0], fixture("fm-101", "Card Alfa", "review", "Codex", "novo-tipo"));
     await page.locator('[data-col="review"] .card[data-id="fm-101"].moved').waitFor({ timeout: 3_000 });
+    await page.locator('[data-filter-group="o"] .chip[data-v="novo-tipo"]').waitFor({ timeout: 1_000 });
   });
 
   await test("refresh por polling funciona sem EventSource", async () => {
@@ -106,6 +109,8 @@ try {
     await group.locator(".group-toggle").click();
     if (!await group.evaluate(element => element.classList.contains("collapsed"))) throw new Error("grupo não recolheu");
     if (!/1/.test(await group.locator(".group-toggle").innerText())) throw new Error("contagem ativa ausente");
+    await page.click("#clear");
+    if (/1/.test(await group.locator(".group-toggle").innerText())) throw new Error("contagem não zerou após limpar");
   });
 
   await test("fullscreen usa fallback .focus sem API", async () => {
