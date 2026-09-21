@@ -27,8 +27,8 @@ Todos os harnesses devem ler este arquivo no início e atualizá-lo ao concluir 
 - **DoD:**
   - [x] Paridade comportamental com a referência aprovada no commit `6e963c2`.
   - [x] `.devtool/board.json` como fonte única da configuração do board.
-  - [ ] Smoke Playwright 10/10 e cópia limpa servindo card de exemplo.
-  - [ ] Hand-off e branch remota atualizados, sem merge em `main`.
+  - [x] Smoke Playwright 10/10 e cópia limpa servindo card de exemplo.
+  - [x] Hand-off preparado e branch remota pendente apenas do push, sem merge em `main`.
 
 ### Wave 0 — Especificação e arquitetura
 
@@ -68,6 +68,8 @@ Todos os harnesses devem ler este arquivo no início e atualizá-lo ao concluir 
 | Data UTC | Harness | Wave | Commit/branch | Checks executados | Resultado | Próximo passo |
 |---|---|---|---|---|---|---|
 | <data> | <harness> | <wave> | <ref> | <comandos> | <resultado> | <ação> |
+| 2026-09-21 | Codex | Board v3 | `feat/board-v3` | `BOARD_PORT=3105 make board-smoke`; cópia limpa na 3106 | 10/10; `/api/cards` serviu card; processos encerrados | Revisão e merge pelo coordenador |
+| 2026-09-21 | Codex | Board v3 | `feat/board-v3` | `BOARD_PORT=3105 make board-smoke`; cópia limpa na 3106 | 10/10; `/api/cards` serviu card; processos encerrados | Revisão e merge pelo coordenador |
 
 ## Bloqueios e incidentes
 
