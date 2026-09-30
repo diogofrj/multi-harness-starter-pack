@@ -54,6 +54,22 @@ star history, links afiliados, changelog completo embutido (linke para
 `CHANGELOG.md` ou para o histórico do Backlog.md em vez de colar seções inteiras).
 Repositório interno da Fulltech não é produto open source e não precisa simular um.
 
+## Frases de acionamento
+
+O roteador de skills casa por similaridade semântica com a `description`, não por
+comando exato — mas estas frases são as que mais confiavelmente acionam cada uma:
+
+- `readme-format`: "documenta o projeto", "documenta a wave X", "atualiza o
+  README", "formata a documentação (readme-format)", "gera o README no padrão
+  Fulltech".
+- `archify` (skill irmã, usada na seção 3 acima): "gera o diagrama de
+  arquitetura", "visualiza a arquitetura do sistema", "cria um diagrama
+  interativo do fluxo X", "converte esse Mermaid pro Archify".
+- Fluxo combinado (README + diagrama interativo): "documenta a arquitetura do
+  projeto com diagrama".
+- Sem depender do roteador, cite o nome exato: "usa a skill `readme-format`" /
+  "usa a skill `archify`".
+
 ## Higiene de `docs/assets`
 
 `docs/assets` guarda só o que o README (ou outro doc linkado) referencia de fato:
