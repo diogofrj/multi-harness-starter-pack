@@ -4,8 +4,9 @@ Bootstrap para projetos desenvolvidos por múltiplos harnesses de IA, com contra
 
 ## O que vem pronto
 
-- `AGENTS.md` como contrato canônico entre Codex, Claude Code e Antigravity/Gemini.
-- Entrypoints curtos em `CLAUDE.md` e `GEMINI.md`.
+- `AGENTS.md` como contrato canônico entre Codex, Claude Code, Antigravity/Gemini e GitHub Copilot.
+- Entrypoints curtos em `CLAUDE.md`, `GEMINI.md` e `.github/copilot-instructions.md`.
+- Skill `readme-format` para padronizar a documentação do projeto (quick start, diagrama de arquitetura, como funciona) antes de qualquer conteúdo de marketing.
 - Planejamento e hand-off por waves em `NOTES.md`.
 - Isolamento de sessões simultâneas com Git worktrees.
 - Hooks de segurança e skills reutilizáveis.
@@ -112,6 +113,7 @@ O subagente `.claude/agents/web-researcher.md` está incorporado para pesquisas 
 ├── CLAUDE.md
 ├── GEMINI.md
 ├── NOTES.md
+├── .github/copilot-instructions.md
 ├── docs/fulltech-memory-integration.md
 ├── .mcp.json.example
 ├── .claude/
