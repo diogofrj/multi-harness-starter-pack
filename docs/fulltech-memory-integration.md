@@ -2,6 +2,15 @@
 
 Fulltech Memory fornece continuidade entre harnesses. O starter pack continua funcional sem essa integração.
 
+## Fulltech Memory x Notes (Memos)
+
+São dois MCPs com escopo diferente; não são intercambiáveis nem substitutos um do outro.
+
+- **Fulltech Memory (`fulltech-memory`)** é memória de IA: decisões, preferências explícitas, padrões comprovados, lições e estado de hand-off entre sessões e harnesses. Conteúdo pensado para outra IA reconsumir depois, não para um humano ler como manual.
+- **Notes (Memos)** é documentação para execução humana: runbooks, scripts simples, comandos úteis e outros recortes de contexto que valem a pena preservar, mas que não precisam (e não devem) virar memória de IA — texto para uma pessoa ler, copiar e rodar, sem exigir que uma IA o reinterprete.
+
+Regra prática: se o conteúdo é "o que decidimos e por quê" ou "o que outra sessão de IA precisa saber para continuar", vai para Fulltech Memory. Se é "como fazer isso de novo" num formato que um humano segue direto, vai para Notes (ou para um runbook versionado no repo, quando o conteúdo for específico do projeto). Um mesmo evento pode gerar registro nos dois, com propósitos diferentes; um não substitui o outro.
+
 ## Configuração
 
 1. Copie `.mcp.json.example` para o arquivo local aceito pelo harness.
