@@ -19,15 +19,17 @@ Leia primeiro [AGENTS.md](AGENTS.md) e [NOTES.md](NOTES.md). As regras arquitetu
 ## Comandos do Projeto
 
 ```bash
-make install       # Instala dependências da stack
-make dev           # Inicia o servidor local de desenvolvimento
-make lint          # Roda linters
-make typecheck     # Checagem de tipagem estrita
-make test          # Executa testes
-make audit         # Executa auditoria do SafeCode Guardian
-make verify        # Verificação end-to-end com evidências
-make board         # Inicia o Kanban em tempo real SSE
-make new-project   # Cria um novo repositório a partir deste starter pack
+make install          # Instala dependências da stack e CLI backlog.md
+make dev              # Inicia o servidor local de desenvolvimento
+make lint             # Roda linters
+make typecheck        # Checagem de tipagem estrita
+make test             # Executa testes
+make audit            # Executa auditoria do SafeCode Guardian
+make verify           # Verificação end-to-end com evidências
+make board            # Inicia o Kanban Fulltech em tempo real SSE
+make backlog-browser  # Inicia o Backlog.md Browser oficial (http://localhost:6420)
+make board-all        # Inicia ambos os boards simultaneamente (3100 + 6420)
+make new-project      # Cria um novo repositório a partir deste starter pack
 ```
 
 ## Operação

@@ -1,17 +1,17 @@
 #!/usr/bin/env node
 // scripts/build-board.mjs — Compilador do board futurista e limpo.
-// Lê .devtool/features/**.md e gera dist/index.html (somente leitura, zero dependências).
+// Lê backlog/tasks/**.md e gera dist/index.html (somente leitura, zero dependências).
 // Suporta tanto deploy estático na Vercel quanto telemetria em tempo real via SSE (server.mjs).
 //
 // uso: node scripts/build-board.mjs [featuresDir] [outFile]
 //      BOARD_TITLE="meu-projeto" node scripts/build-board.mjs
 
-import { readFileSync, mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { loadCards as loadBoardCards } from "./board-cards.mjs";
 import { loadBoardConfig } from "./board-config.mjs";
 
-const FEATURES = process.argv[2] ?? ".devtool/features";
+const FEATURES = process.argv[2] ?? (existsSync("backlog/tasks") ? "backlog/tasks" : "backlog/tasks");
 const OUT = process.argv[3] ?? "dist/index.html";
 const BOARD_CONFIG = loadBoardConfig();
 const COLUMNS = BOARD_CONFIG.columns;
@@ -702,9 +702,10 @@ body.focus main{padding-top:16px;min-height:100vh}
     <div class="brand-logo">FT</div>
     <h1>${esc(TITLE)} <span>// board</span></h1>
   </div>
-  <span class="count" id="board-count"><b>${byCol.todo.length}</b> a fazer · <b>${byCol["in-progress"].length}</b> em andamento · <b>${byCol.backlog.length}</b> backlog</span>
+  <span class="count" id="board-count"><b>${(byCol.todo || byCol["to-do"] || []).length}</b> a fazer · <b>${(byCol["in-progress"] || []).length}</b> em andamento · <b>${(byCol.backlog || []).length}</b> backlog</span>
   <div class="header-right">
     <span class="mono" id="updated-at" title="Atualização automática">atualizado --:--:-- · <span id="refresh-countdown">10</span>s</span>
+    <a href="http://localhost:6420" target="_blank" rel="noopener" class="sim-btn" style="text-decoration:none;display:inline-flex;align-items:center;" title="Abrir Backlog.md Browser UI (porta 6420)">📋 Backlog.md</a>
     <button class="sim-btn" id="btn-refresh" title="Atualizar cards">↻</button>
     <button class="sim-btn" id="btn-filters" aria-expanded="true">filtros</button>
     <button class="sim-btn" id="btn-fullscreen" title="Tela cheia">⛶</button>

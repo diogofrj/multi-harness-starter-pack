@@ -31,36 +31,61 @@ const sourceRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const smokePort = Number(process.env.BOARD_PORT || 3105);
 const baseUrl = `http://127.0.0.1:${smokePort}`;
 const root = mkdtempSync(join(tmpdir(), "board-v3-smoke-"));
-const features = join(root, ".devtool", "features");
+const tasksDir = join(root, "backlog", "tasks");
 mkdirSync(join(root, "scripts"), { recursive: true });
-mkdirSync(features, { recursive: true });
+mkdirSync(tasksDir, { recursive: true });
 for (const file of ["server.mjs", "scripts/build-board.mjs", "scripts/board-cards.mjs", "scripts/board-config.mjs"]) cpSync(join(sourceRoot, file), join(root, file));
-writeFileSync(join(root, ".devtool", "board.json"), JSON.stringify({
-  cardPrefix: "TK-",
-  cardIdPattern: "(TK-[0-9]+[a-z]?)",
-  cardIdFormat: "lower($1)",
-  mainBranchCard: null,
-  specialCases: [],
-  columns: [
-    { id: "backlog", name: "Backlog" },
-    { id: "todo", name: "A fazer" },
-    { id: "in-progress", name: "Em andamento" },
-    { id: "review", name: "Revisão" },
-    { id: "done", name: "Fechado" },
-  ],
-  port: smokePort,
-  bind: "127.0.0.1",
-  refreshIntervalSeconds: 10,
-  agentTimeoutSeconds: 90,
-  pulseTtlSeconds: { min: 10, max: 900 },
-  presence: { enabled: true, label: "Ambientes abertos", intervalSeconds: 30, staleAfterIntervals: 3, defaultOpen: false },
-}));
+writeFileSync(join(root, "backlog", "config.yml"), `board_name: "Test Board"
+columns:
+  - "Backlog"
+  - "To Do"
+  - "In Progress"
+  - "Review"
+  - "Done"
+port: ${smokePort}
+bind: "127.0.0.1"
+refreshIntervalSeconds: 10
+agentTimeoutSeconds: 90
+pulseTtlSeconds:
+  min: 10
+  max: 900
+presence:
+  enabled: true
+  label: "Ambientes abertos"
+  intervalSeconds: 30
+  staleAfterIntervals: 3
+  defaultOpen: false
+`);
 
-const fixture = (id, title, status, owner, extraLabel = null) => `---\nid: ${id}\nstatus: ${status}\npriority: high\nassignee: ${owner}\nlabels: ${JSON.stringify(["wave-2b", "board", ...(extraLabel ? [extraLabel] : [])])}\norder: a${id}\n---\n# ${title}\n\nDescrição segura de ${title}.\n\n## Verify\n- [x] primeiro\n- [ ] segundo\n`;
-const paths = [join(features, "tk-101.md"), join(features, "tk-102.md"), join(features, "tk-103.md")];
-writeFileSync(paths[0], fixture("tk-101", "Card Alfa", "todo", "Codex"));
-writeFileSync(paths[1], fixture("tk-102", "Card Beta", "backlog", "Sonnet"));
-writeFileSync(paths[2], fixture("tk-103", "Card Gama", "done", "Codex"));
+const fixture = (id, title, status, owner, extraLabel = null) => `---
+id: ${id}
+title: ${title}
+status: ${status}
+priority: high
+assignee:
+  - ${owner}
+labels:
+  - wave-2b
+  - board
+  ${extraLabel ? `- ${extraLabel}` : ""}
+order: a${id}
+---
+
+## Description
+<!-- SECTION:DESCRIPTION:BEGIN -->
+Descrição segura de ${title}.
+<!-- SECTION:DESCRIPTION:END -->
+
+## Verify
+<!-- SECTION:VERIFY:BEGIN -->
+- [x] primeiro
+- [ ] segundo
+<!-- SECTION:VERIFY:END -->
+`;
+const paths = [join(tasksDir, "task-101.md"), join(tasksDir, "task-102.md"), join(tasksDir, "task-103.md")];
+writeFileSync(paths[0], fixture("task-101", "Card Alfa", "To Do", "Codex"));
+writeFileSync(paths[1], fixture("task-102", "Card Beta", "Backlog", "Sonnet"));
+writeFileSync(paths[2], fixture("task-103", "Card Gama", "Done", "Codex"));
 
 const child = spawn(process.execPath, [join(root, "server.mjs")], { cwd: root, env: { ...process.env, BOARD_PORT: String(smokePort), PORT: String(smokePort) }, stdio: ["ignore", "pipe", "pipe"] });
 let serverLog = "";
@@ -100,8 +125,8 @@ try {
 
   await test("refresh por SSE move card e marca .moved", async () => {
     await page.getByText("Live Telemetry", { exact: true }).waitFor({ timeout: 2_000 });
-    writeFileSync(paths[0], fixture("tk-101", "Card Alfa", "review", "Codex", "novo-tipo"));
-    await page.locator('[data-col="review"] .card[data-id="tk-101"].moved').waitFor({ timeout: 3_000 });
+    writeFileSync(paths[0], fixture("task-101", "Card Alfa", "Review", "Codex", "novo-tipo"));
+    await page.locator('[data-col="review"] .card[data-id="task-101"].moved').waitFor({ timeout: 3_000 });
     await page.locator('[data-filter-group="o"] .chip[data-v="novo-tipo"]').waitFor({ timeout: 1_000 });
   });
 
@@ -110,8 +135,8 @@ try {
     await pollingContext.addInitScript(() => { Object.defineProperty(window, "EventSource", { value: undefined }); });
     const pollingPage = await pollingContext.newPage();
     await pollingPage.goto(`${baseUrl}/?refresh=2`, { waitUntil: "networkidle" });
-    writeFileSync(paths[1], fixture("tk-102", "Card Beta", "in-progress", "Sonnet"));
-    await pollingPage.locator('[data-col="in-progress"] .card[data-id="tk-102"].moved').waitFor({ timeout: 5_000 });
+    writeFileSync(paths[1], fixture("task-102", "Card Beta", "In Progress", "Sonnet"));
+    await pollingPage.locator('[data-col="in-progress"] .card[data-id="task-102"].moved').waitFor({ timeout: 5_000 });
     await pollingContext.close();
   });
 
@@ -142,13 +167,13 @@ try {
   });
 
   await test("hover abre peek com título", async () => {
-    await page.locator('.card[data-id="tk-101"]').hover();
+    await page.locator('.card[data-id="task-101"]').hover();
     await page.locator("#peek:not([hidden])").waitFor({ timeout: 1_500 });
     if (!/Card Alfa/.test(await page.locator("#peek").innerText())) throw new Error("título ausente no peek");
   });
 
   await test("Enter abre painel", async () => {
-    await page.locator('.card[data-id="tk-101"]').focus();
+    await page.locator('.card[data-id="task-101"]').focus();
     await page.keyboard.press("Enter");
     if (!await page.locator("#panel").evaluate(element => element.classList.contains("open"))) throw new Error("painel não abriu");
     await page.keyboard.press("Escape");

@@ -1,47 +1,36 @@
 ---
-id: tk-1
-status: ready
-priority: high
-assignee: unassigned
+id: task-1
+title: Motor opcional de orquestração inspirado no Symphony
+status: To Do
+assignee: []
+created_date: '2026-10-14 11:15'
 labels: [orchestration, symphony, codex, board]
-order: a1
+dependencies: []
+ordinal: 1000
 ---
-# Motor opcional de orquestração inspirado no Symphony
 
+## Description
+<!-- SECTION:DESCRIPTION:BEGIN -->
 Absorver o modelo do Symphony como motor opcional do starter pack, preservando os contratos multi-harness e o funcionamento atual sem orquestrador.
 
-## Referências
-
+### Referências
 - Repositório original: [openai/symphony](https://github.com/openai/symphony)
 - Especificação: [Symphony Service Specification](https://github.com/openai/symphony/blob/main/SPEC.md)
 
-As referências orientam o desenho; a implementação não precisa copiar a implementação Elixir do projeto original.
-
-## Fluxo inicial
-
+### Fluxo inicial
 `ready → claim/worktree → execução Codex → hand-off/evidências → review`
 
-## Escopo da primeira versão
-
-- Tracker baseado em `.devtool/features/*.md`.
+### Escopo da primeira versão
+- Tracker baseado em `backlog/tasks/*.md`.
 - Reserva executável com dono e geração.
 - Worktree isolado por card.
 - Runner exclusivo para Codex app-server.
 - Snapshot autoritativo do orquestrador consumido pelo board.
 - Pulse de processos mantido apenas como diagnóstico.
 - Parada obrigatória em `review`.
-- Retries, reconciliação e concorrência limitada.
-
-## Fora de escopo
-
-- Merge automático.
-- Runners para Claude ou Gemini.
-- Substituir `AGENTS.md`, hand-offs ou o protocolo de revisão.
-- Tornar Fulltech Memory obrigatório.
-- Remover o modo manual atual.
+<!-- SECTION:DESCRIPTION:END -->
 
 ## Verify
-
 - [ ] O modo atual continua funcionando sem configuração adicional.
 - [ ] Um card elegível não pode ser executado simultaneamente duas vezes.
 - [ ] Cada execução ocorre somente no worktree correspondente ao card.

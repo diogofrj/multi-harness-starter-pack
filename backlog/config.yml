@@ -1,0 +1,23 @@
+project_name: "multi-harness"
+default_status: "To Do"
+statuses: ["Backlog", "To Do", "In Progress", "Review", "Done"]
+labels: ["bootstrap", "foundation", "orchestration", "symphony", "security", "ui"]
+date_format: yyyy-mm-dd
+max_column_width: 20
+default_editor: "vim"
+auto_open_browser: false
+default_port: 6420
+remote_operations: true
+auto_commit: false
+filesystem_only: false
+bypass_git_hooks: false
+check_active_branches: true
+active_branch_days: 30
+task_prefix: "task"
+port: 3100
+bind: "0.0.0.0"
+refresh_interval_seconds: 10
+agent_timeout_seconds: 90
+presence_enabled: true
+presence_label: "Harnesses abertos"
+presence_interval_seconds: 30

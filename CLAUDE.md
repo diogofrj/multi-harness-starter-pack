@@ -13,15 +13,17 @@ Leia primeiro [AGENTS.md](AGENTS.md) e [NOTES.md](NOTES.md). As regras arquitetu
 ## Comandos Principais
 
 ```bash
-make install       # Instala dependências da stack
-make dev           # Inicia o servidor local de desenvolvimento
-make lint          # Roda linters (falha se não configurado)
-make typecheck     # Checagem de tipagem estrita
-make test          # Executa suíte de testes unitários e integração
-make audit         # Executa SafeCode Guardian (Evertec 13, OWASP, SDD Scorecard)
-make verify        # Verificação end-to-end com evidências (test + lint + audit)
-make board         # Inicia o Kanban em tempo real SSE (http://localhost:3100)
-make new-project   # Cria um novo repositório a partir deste starter pack
+make install          # Instala dependências da stack e CLI backlog.md
+make dev              # Inicia o servidor local de desenvolvimento
+make lint             # Roda linters (falha se não configurado)
+make typecheck        # Checagem de tipagem estrita
+make test             # Executa suíte de testes unitários e integração
+make audit            # Executa SafeCode Guardian (Evertec 13, OWASP, SDD Scorecard)
+make verify           # Verificação end-to-end com evidências (test + lint + audit)
+make board            # Inicia o Kanban Fulltech em tempo real SSE (http://localhost:3100)
+make backlog-browser  # Inicia o Backlog.md Browser oficial (http://localhost:6420)
+make board-all        # Inicia ambos os boards simultaneamente (3100 + 6420)
+make new-project      # Cria um novo repositório a partir deste starter pack
 ```
 
 Não trate fallback silencioso ou comando ausente como check verde. Evidência, não opinião.

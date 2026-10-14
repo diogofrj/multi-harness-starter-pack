@@ -6,7 +6,7 @@ WORKDIR /app
 COPY package.json ./
 COPY server.mjs ./
 COPY scripts ./scripts
-COPY .devtool ./.devtool
+COPY backlog ./backlog
 
 EXPOSE 3000
 

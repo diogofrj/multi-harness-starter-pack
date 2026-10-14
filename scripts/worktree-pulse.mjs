@@ -15,7 +15,7 @@
 // Env: BOARD_PORT sobrescreve o board.json; BOARD_AUTOSTART=0 impede subir o board.
 
 import { execFileSync, spawn } from "node:child_process";
-import { readdirSync, readFileSync, readlinkSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, readlinkSync } from "node:fs";
 import os from "node:os";
 import http from "node:http";
 import path from "node:path";
@@ -51,7 +51,9 @@ const HARNESSES = [
 // Modelo por harness: Codex lê ~/.codex/config.toml; os demais vêm de .devtool/harness-models.json (fallback estático).
 // Claude Code não precisa: o hook manda o modelo lido do transcript e o servidor conserva.
 function staticModels() {
-  try { return JSON.parse(readFileSync(path.join(REPO, ".devtool", "harness-models.json"), "utf8")); } catch { return {}; }
+  const p1 = path.join(REPO, "backlog", "harness-models.json");
+  const p2 = path.join(REPO, ".devtool", "harness-models.json");
+  try { return JSON.parse(readFileSync(existsSync(p1) ? p1 : p2, "utf8")); } catch { return {}; }
 }
 function codexModel() {
   try { const m = /^\s*model\s*=\s*"([^"]+)"/m.exec(readFileSync(path.join(os.homedir(), ".codex", "config.toml"), "utf8")); return m ? m[1] : null; } catch { return null; }

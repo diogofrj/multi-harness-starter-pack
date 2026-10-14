@@ -1,0 +1,7 @@
+{
+  "recommendations": [
+    "ysamlan.vscode-backlog-md",
+    "esbenp.prettier-vscode",
+    "dbaeumer.vscode-eslint"
+  ]
+}

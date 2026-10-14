@@ -1,16 +1,21 @@
-.PHONY: help install dev board board-docker board-status board-stop board-smoke pulse-watch lint typecheck test test-watch deploy-staging deploy-prod worktree-new worktree-list worktree-clean audit verify new-project spec waves
+.PHONY: help install dev board board-docker board-status board-stop board-smoke pulse-watch lint typecheck test test-watch deploy-staging deploy-prod worktree-new worktree-list worktree-clean audit verify new-project spec waves backlog-browser board-all
 
 BOARD_DEFAULT_PORT := $(shell node scripts/board-config.mjs get port)
 BOARD_PORT_VALUE := $(if $(BOARD_PORT),$(BOARD_PORT),$(BOARD_DEFAULT_PORT))
+BACKLOG_PORT ?= 6420
 
 help: ## Exibe os comandos disponíveis
 	@echo "Comandos disponíveis:"
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-18s\033[0m %s\n", $$1, $$2}'
 
-install: ## Instala dependências
+install: ## Instala dependências do projeto e o CLI Backlog.md
 	@set -e; \
 	if [ -f pnpm-lock.yaml ]; then command -v pnpm >/dev/null || { echo "pnpm não instalado"; exit 1; }; pnpm install; \
 	elif [ -f package.json ]; then npm install; fi; \
+	if ! command -v backlog >/dev/null 2>&1; then \
+		echo "📦 Instalando CLI backlog.md global..."; \
+		npm install -g backlog.md || echo "⚠️ Não foi possível instalar backlog.md globalmente (sem permissão root)."; \
+	fi; \
 	if [ -f requirements.txt ]; then python -m pip install -r requirements.txt; fi; \
 	if [ -f pyproject.toml ]; then \
 		if command -v poetry >/dev/null 2>&1; then poetry install; \
@@ -28,18 +33,38 @@ board: ## Sobe (ou reaproveita) o board local e o watcher de presença
 	@if curl -sf -m 2 "http://127.0.0.1:$(BOARD_PORT_VALUE)/api/agents" >/dev/null 2>&1; then echo "board já no ar"; \
 	else if command -v setsid >/dev/null 2>&1; then setsid nohup env BOARD_PORT=$(BOARD_PORT_VALUE) BOARD_DIST=$${BOARD_DIST:-/tmp/$(notdir $(CURDIR))-board-index.html} node $(CURDIR)/server.mjs >/tmp/$(notdir $(CURDIR))-board.log 2>&1 </dev/null & else nohup env BOARD_PORT=$(BOARD_PORT_VALUE) BOARD_DIST=$${BOARD_DIST:-/tmp/$(notdir $(CURDIR))-board-index.html} node $(CURDIR)/server.mjs >/tmp/$(notdir $(CURDIR))-board.log 2>&1 </dev/null & fi; attempts=0; until curl -sf -m 1 "http://127.0.0.1:$(BOARD_PORT_VALUE)/api/agents" >/dev/null 2>&1; do attempts=$$((attempts + 1)); if [ $$attempts -ge 30 ]; then echo "board não iniciou; veja /tmp/$(notdir $(CURDIR))-board.log"; exit 1; fi; sleep .1; done; echo "board iniciado (log /tmp/$(notdir $(CURDIR))-board.log)"; fi
 	@scripts/worktree-pulse-daemon.sh status >/dev/null 2>&1 || scripts/worktree-pulse-daemon.sh start
-	@echo "🪐 Board local: http://localhost:$(BOARD_PORT_VALUE)"
+	@echo "🪐 Fulltech Board: http://localhost:$(BOARD_PORT_VALUE)"
+
+backlog-browser: ## Inicia o Backlog.md Browser oficial (porta 6420)
+	@if curl -sf -m 2 "http://127.0.0.1:$(BACKLOG_PORT)" >/dev/null 2>&1; then \
+		echo "backlog browser já no ar em http://localhost:$(BACKLOG_PORT)"; \
+	else \
+		if command -v setsid >/dev/null 2>&1; then \
+			setsid nohup backlog browser --port $(BACKLOG_PORT) --no-open </dev/null >/tmp/$(notdir $(CURDIR))-backlog-browser.log 2>&1 & \
+		else \
+			nohup backlog browser --port $(BACKLOG_PORT) --no-open </dev/null >/tmp/$(notdir $(CURDIR))-backlog-browser.log 2>&1 & \
+		fi; \
+		sleep 1; \
+		echo "📋 Backlog.md Browser: http://localhost:$(BACKLOG_PORT) (log /tmp/$(notdir $(CURDIR))-backlog-browser.log)"; \
+	fi
+
+board-all: board backlog-browser ## Sobe simultaneamente o Fulltech Board (3100) e o Backlog Browser (6420)
+	@echo "✨ Ambos os dashboards estão disponíveis:"
+	@echo "   - Fulltech Kanban & Telemetria: http://localhost:$(BOARD_PORT_VALUE)"
+	@echo "   - Backlog.md Interactive UI:   http://localhost:$(BACKLOG_PORT)"
 
 board-docker: ## Sobe o board pelo Docker Compose na porta configurada
 	@BOARD_PORT=$(BOARD_PORT_VALUE) docker compose up
 
 board-status: ## Exibe o estado do board e do watcher
 	@curl -sf -m 2 "http://127.0.0.1:$(BOARD_PORT_VALUE)/api/agents" >/dev/null 2>&1 && echo "board: no ar em http://localhost:$(BOARD_PORT_VALUE)" || echo "board: fora do ar"
+	@curl -sf -m 2 "http://127.0.0.1:$(BACKLOG_PORT)" >/dev/null 2>&1 && echo "backlog browser: no ar em http://localhost:$(BACKLOG_PORT)" || echo "backlog browser: fora do ar"
 	@scripts/worktree-pulse-daemon.sh status || true
 
-board-stop: ## Para o watcher e este servidor local
+board-stop: ## Para o watcher, o board Fulltech e o backlog browser
 	@scripts/worktree-pulse-daemon.sh stop || true
 	@pkill -f "node $(CURDIR)/[s]erver.mjs" 2>/dev/null && echo "board parado" || echo "board não estava rodando"
+	@pkill -f "[b]acklog.*browser.*$(BACKLOG_PORT)" 2>/dev/null && echo "backlog browser parado" || true
 
 board-smoke: ## Executa o smoke Playwright em uma porta isolada
 	@node scripts/board-smoke.mjs

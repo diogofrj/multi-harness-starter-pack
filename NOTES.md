@@ -25,10 +25,9 @@ Todos os harnesses devem ler este arquivo no início e atualizá-lo ao concluir 
 - **Branch:** `feat/board-v3`.
 - **Arquivos reservados:** board, telemetria, Makefile, compose e documentação associada.
 - **DoD:**
-  - [x] Paridade comportamental com a referência aprovada no commit `6e963c2`.
-  - [x] `.devtool/board.json` como fonte única da configuração do board.
-  - [x] Smoke Playwright 10/10 e cópia limpa servindo card de exemplo.
-  - [x] Hand-off preparado e branch remota pendente apenas do push, sem merge em `main`.
+  - [x] `backlog/config.yml` e padrão Backlog.md (`backlog/tasks/`) como fonte única da configuração e tarefas.
+  - [x] Fusão concluída: Fulltech SSE Kanban (3100) integrado com Backlog.md Browser (6420).
+  - [x] Hand-off preparado e auditoria SafeCode Guardian Grau A.
 
 ### Wave 0 — Especificação e arquitetura
 

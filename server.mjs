@@ -3,7 +3,7 @@
 // Zero dependências externas (apenas Node.js nativo).
 //
 // Uso: node server.mjs
-// Porta: BOARD_PORT, PORT ou o valor definido em .devtool/board.json.
+// Porta: BOARD_PORT, PORT ou o valor definido em backlog/config.yml.
 
 import http from "node:http";
 import fs from "node:fs";
@@ -17,7 +17,8 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const boardConfig = loadBoardConfig(__dirname);
 const PORT = Number(process.env.BOARD_PORT || process.env.PORT || boardConfig.port);
 const BIND = process.env.BOARD_BIND || boardConfig.bind;
-const FEATURES_DIR = path.join(__dirname, ".devtool", "features");
+const TASKS_DIR = path.join(__dirname, "backlog", "tasks");
+const FEATURES_DIR = TASKS_DIR;
 const BUILD_SCRIPT = path.join(__dirname, "scripts", "build-board.mjs");
 const DIST_INDEX = process.env.BOARD_DIST ? path.resolve(process.env.BOARD_DIST) : path.join(__dirname, "dist", "index.html");
 const TELEMETRY_SOURCE = process.env.BOARD_TELEMETRY_SOURCE || null;
@@ -122,8 +123,9 @@ function triggerBuild(callback) {
 
 // Watcher para recarregar se cards mudarem no disco
 try {
-  fs.watch(path.join(__dirname, ".devtool"), { recursive: true }, (eventType, filename) => {
-    if (filename && filename.endsWith(".md")) {
+  const watchDir = path.join(__dirname, "backlog");
+  fs.watch(watchDir, { recursive: true }, (eventType, filename) => {
+    if (filename && (filename.endsWith(".md") || filename.endsWith(".yml") || filename.endsWith(".json"))) {
       console.log(`[watch] Alteração detectada em ${filename}. Atualizando board...`);
       triggerBuild();
     }

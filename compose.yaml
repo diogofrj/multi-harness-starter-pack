@@ -5,7 +5,7 @@ services:
     ports:
       - "${BOARD_PORT}:${BOARD_PORT}"
     volumes:
-      - ./.devtool:/app/.devtool:ro
+      - ./backlog:/app/backlog:ro
       - ./dist:/app/dist
       - ./server.mjs:/app/server.mjs
       - ./scripts:/app/scripts

@@ -55,13 +55,21 @@ Este é o documento de autoridade comum para todos os harnesses usados no projet
 
 ---
 
-## 3. Trabalho Paralelo e Git Worktrees
+## 3. Trabalho Paralelo, Backlog.md e Git Worktrees
 
-Nunca opere dois harnesses no mesmo diretório de trabalho. Cada executor recebe:
-- Um Git worktree e branch próprios (`make worktree-new NAME=<wave>`);
-- Arquivos e fatias de responsabilidade explícitos;
-- Critérios de conclusão e comandos de verificação;
-- Proibição de editar arquivos reservados a outro executor.
+**Regra de Ouro:** `1 Tarefa = 1 Branch (feat/task-X-...) = 1 Worktree = 1 PR = 1 Contexto`.
+
+- **Tarefas em Backlog.md:** O repositório utiliza o padrão aberto **Backlog.md** em `backlog/tasks/task-X - titulo.md` com YAML frontmatter.
+- **Gerenciamento via CLI ou IDE:**
+  - Criar tarefa: `backlog task create "Título da entrega" -s "To Do" -p high -a "Codex"`
+  - Editar/mover: `backlog task edit task-X -s "In Progress"`
+  - Visualizar: `make board` (Fulltech Kanban + telemetria porta 3100) ou `make backlog-browser` (porta 6420).
+- **Isolamento Físico de Agentes:**
+  - Nunca opere dois harnesses no mesmo diretório de trabalho. Cada executor recebe:
+    - Um Git worktree e branch próprios (`make worktree-new NAME=task-X-descricao`);
+    - Arquivos e fatias de responsabilidade explícitos;
+    - Critérios de conclusão e comandos de verificação (`make verify`);
+    - Proibição de editar arquivos reservados a outro executor.
 
 O coordenador integra as branches na branch principal somente após revisão e aprovação em todos os checks.
 

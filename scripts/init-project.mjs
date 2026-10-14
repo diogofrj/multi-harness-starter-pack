@@ -66,7 +66,8 @@ async function prompt(question, defaultValue = '') {
 const IGNORE_PATTERNS = [
   /^\.git(\/|$)/,
   /^node_modules(\/|$)/,
-  /^\.devtool\/features\/.+/,
+  /^backlog\/tasks\/.+/,
+  /^\.devtool(\/|$)/,
   /^\.claude\/\.cc-writes/,
   /^\.claude\/agent-memory/,
   /\.log$/,
@@ -215,7 +216,37 @@ Todos os harnesses devem ler este arquivo no início de cada sessão e atualizá
   - [ ] Contrato de API documentado.
   - [ ] Gates locais (\`make test\`, \`make lint\`, \`make audit\`) configurados.
 `;
-  fs.writeFileSync(notesPath, initialNotes, 'utf8');
+  // Cria a tarefa inicial no Backlog.md
+  const tasksDir = path.join(destPath, 'backlog', 'tasks');
+  fs.mkdirSync(tasksDir, { recursive: true });
+  const task1Path = path.join(tasksDir, 'task-1 - initial-spec-and-scaffold.md');
+  const initialTask = `---
+id: task-1
+title: Especificação e fundação inicial
+status: To Do
+priority: high
+assignee:
+  - Coordenador
+labels:
+  - wave-0
+  - sdd
+  - foundation
+order: a1
+---
+
+## Description
+<!-- SECTION:DESCRIPTION:BEGIN -->
+Configurar contratos base, documentar \`SPEC.md\` via Spec-Driven Development, criar contratos OpenAPI em \`docs/api/openapi.yaml\` e assegurar conformidade SafeCode Guardian Grau A.
+<!-- SECTION:DESCRIPTION:END -->
+
+## Verify
+<!-- SECTION:VERIFY:BEGIN -->
+- [ ] \`SPEC.md\` aprovado com regras de negócio e limites arquiteturais
+- [ ] Contratos de API em \`docs/api/\` validados
+- [ ] \`make audit\` executando com score >= 90 (Grau A)
+<!-- SECTION:VERIFY:END -->
+`;
+  fs.writeFileSync(task1Path, initialTask, 'utf8');
 
   // Inicializa repositório Git limpo
   console.log('🌿 Inicializando repositório Git...');
@@ -254,8 +285,8 @@ Todos os harnesses devem ler este arquivo no início de cada sessão e atualizá
   console.log(`   cd ${destPath}`);
   console.log('\nPróximos passos recomendados:');
   console.log('1. cd ' + destPath);
-  console.log('2. make install    # Instalar dependências da stack');
-  console.log('3. make board      # Abrir o Kanban local de telemetria');
+  console.log('2. make install    # Instalar dependências da stack e CLI backlog');
+  console.log('3. make board-all  # Abrir Kanban Fulltech (3100) + Backlog Browser (6420)');
   console.log('4. Rode /spec no Claude Code ou /plan no Antigravity para iniciar a Wave 0!');
   console.log('========================================================\n');
 }

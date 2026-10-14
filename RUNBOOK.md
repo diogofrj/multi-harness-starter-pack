@@ -43,8 +43,9 @@ O **Multi-Harness Enterprise Starter Pack** transforma o uso de assistentes de I
 | **[`.claude/skills/`](.claude/skills/)** | Skills Especializadas | Ferramentas invocáveis como comandos (`/spec`, `/waves`, `/vertical-slice`, `/verify`, `/init-project`, etc.). |
 | **[`.agents/skills/`](.agents/skills/)** | Symlinks Multi-Harness | Espelhamento automático de todas as skills para Codex e Antigravity. |
 | **[`.claude/agents/`](.claude/agents/)** | Agentes Especialistas | Personas de subagentes: `code-reviewer`, `threat-modeler`, `test-runner`, `web-researcher`. |
+| **[`backlog/`](backlog/)** | **Backlog.md & Config** | Diretório canônico de tarefas Markdown (`backlog/tasks/`), configuração do board (`config.yml`) e mapeamento de modelos (`harness-models.json`). |
 | **[`scripts/init-project.mjs`](scripts/init-project.mjs)** | Scaffolder de Projetos | Script que instancia novos repositórios limpos a partir deste template. |
-| **[`server.mjs`](server.mjs)** | Servidor Kanban SSE | Backend Node leve (zero deps pesadas) que serve o Kanban local em tempo real. |
+| **[`server.mjs`](server.mjs)** | Servidor Kanban SSE | Backend Node leve (zero deps pesadas) que serve o Kanban local em tempo real na porta 3100. |
 
 ---
 
@@ -75,13 +76,15 @@ Execute `make help` no terminal para listar todos os comandos disponíveis:
 | `make audit` | Executa o motor **SafeCode Guardian** localmente: valida as 13 regras Evertec de desenvolvimento seguro por IA, OWASP Top 10, OWASP LLM & MCP e conformidade SDD. | Gera scorecard JSON com nota (A a F) e Red Flags. |
 | `make verify` | Verificação completa end-to-end antes de fechar uma entrega: executa os gates de qualidade e a auditoria do SafeCode Guardian com evidências. | Evidência de conclusão para o hand-off. |
 
-### D. Kanban & Telemetria em Tempo Real
+### D. Kanban, Backlog & Telemetria em Tempo Real
 | Comando | O que faz | O que sobe / afeta |
 | :--- | :--- | :--- |
-| `make board` | Sobe o servidor web local em background e inicia o daemon de presença de worktrees. | **Sobe `http://localhost:3100`** (SSE em tempo real). |
+| `make board` | Sobe o servidor web local em background e inicia o daemon de presença de worktrees. | **Sobe `http://localhost:3100`** (Fulltech Kanban SSE). |
+| `make backlog-browser` | Sobe o visualizador interativo oficial do Backlog.md na porta configurada. | **Sobe `http://localhost:6420`** (Backlog.md UI). |
+| `make board-all` | Sobe concorrentemente o Fulltech Kanban (telemetria) e o Backlog.md Browser. | Portas 3100 e 6420 integradas. |
 | `make board-docker` | Sobe o Kanban Board encapsulado via Docker Compose. | Sobe container na porta 3100. |
-| `make board-status` | Informa se o servidor do board e o watcher de processos estão ativos. | Checagem de status via curl. |
-| `make board-stop` | Encerra o servidor local do board e mata o daemon de telemetria. | Libera a porta e para os processos. |
+| `make board-status` | Informa se o servidor do board, o backlog browser e o watcher de processos estão ativos. | Checagem de status via curl. |
+| `make board-stop` | Encerra o servidor local do board, o backlog browser e mata o daemon de telemetria. | Libera as portas 3100/6420 e para processos. |
 | `make pulse-watch` | Publica em tempo real a presença dos harnesses em cada worktree. | Watcher em foreground. |
 
 ### E. Trabalho Paralelo com Git Worktrees
@@ -141,3 +144,20 @@ make audit
 ```
 Para ver o dashboard central interativo com remediações de código:
 Acesse **`http://localhost:8765/#safecode`** no navegador.
+
+### Gerenciar Tarefas no Backlog.md (Kanban & Telemetria)
+- **Criar tarefa via CLI:**
+  ```bash
+  backlog task create "Implementar webhook PIX" -s "To Do" -p high -a "Codex"
+  ```
+- **Listar tarefas:**
+  ```bash
+  backlog task list
+  ```
+- **Visualizar painéis:**
+  - `make board`: Abre o Fulltech Kanban com telemetria de agentes em tempo real na porta `3100`.
+  - `make backlog-browser`: Abre a interface oficial do Backlog.md na porta `6420`.
+  - `make board-all`: Inicia ambos os serviços simultaneamente.
+- **Extensão VS Code / Cursor:**
+  - Instale a extensão oficial recomendada: `ysamlan.vscode-backlog-md` para visualizar e editar o quadro direto na IDE.
+

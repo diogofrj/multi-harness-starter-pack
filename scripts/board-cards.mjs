@@ -1,5 +1,6 @@
 import { basename, join } from "node:path";
-import { readdirSync, readFileSync, statSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { slugifyStatus } from "./board-config.mjs";
 
 export const esc = value => String(value ?? "")
   .replace(/&/g, "&amp;")
@@ -63,41 +64,52 @@ function parseFrontmatter(text) {
   if (!match) return { meta: {}, body: text };
   const meta = {};
   for (const line of match[1].split(/\r?\n/)) {
-    const pair = /^([A-Za-z]+):\s*(.*)$/.exec(line);
+    const pair = /^([A-Za-z_-]+):\s*(.*)$/.exec(line);
     if (!pair) continue;
     const [, key, raw] = pair;
     let value = raw.trim();
     if (value === "null" || value === "") value = null;
     else if (value.startsWith("[")) {
       try { value = JSON.parse(value); }
-      catch { value = value.slice(1, -1).split(",").map(item => item.trim().replace(/^"|"$/g, "")).filter(Boolean); }
-    } else if (value.startsWith('"') && value.endsWith('"')) value = value.slice(1, -1);
+      catch { value = value.slice(1, -1).split(",").map(item => item.trim().replace(/^['"]|['"]$/g, "")).filter(Boolean); }
+    } else if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+      value = value.slice(1, -1);
+    }
     meta[key] = value;
   }
   return { meta, body: match[2] };
 }
 
-export function loadCards(dir = ".devtool/features", config) {
-  if (!config?.columns?.length) throw new Error("loadCards exige columns de .devtool/board.json");
-  const cards = listMarkdown(dir).map(file => {
+export function loadCards(dir = null, config) {
+  const targetDir = dir || (existsSync("backlog/tasks") ? "backlog/tasks" : ".devtool/features");
+  if (!config?.columns?.length) throw new Error("loadCards exige columns configuradas");
+  const cards = listMarkdown(targetDir).map(file => {
     const { meta, body } = parseFrontmatter(readFileSync(file, "utf8"));
     const titleMatch = /^#\s+(.+)$/m.exec(body);
-    const title = titleMatch ? titleMatch[1].trim() : basename(file, ".md");
+    const title = meta.title ?? (titleMatch ? titleMatch[1].trim() : basename(file, ".md").replace(/^task-\d+\s*-\s*/i, ""));
     const rest = titleMatch ? body.replace(titleMatch[0], "").trim() : body.trim();
-    const id = meta.id ?? basename(file, ".md");
+    const id = meta.id ?? basename(file, ".md").split(" - ")[0];
     const checks = [...rest.matchAll(/^\s*[-*]\s+\[([ xX])\]\s+/gm)];
+    const rawStatus = meta.status ?? config.columns[0].name;
+    const statusSlug = slugifyStatus(rawStatus);
+    const matchedCol = config.columns.find(col => col.id === statusSlug || slugifyStatus(col.name) === statusSlug);
+    const status = matchedCol ? matchedCol.id : config.columns[0].id;
+    const assignee = Array.isArray(meta.assignee)
+      ? (meta.assignee.length ? meta.assignee.join(", ") : null)
+      : (meta.assignee ?? null);
+
     return {
-      id,
-      shortId: /^([a-z]+-\d+[a-z]?)-/i.exec(id)?.[1] ?? id.replace(/-\d{4}-\d{2}-\d{2}$/, ""),
+      id: String(id).toLowerCase(),
+      shortId: /^([a-z]+-\d+[a-z]?)-/i.exec(id)?.[1] ?? String(id).replace(/-\d{4}-\d{2}-\d{2}$/, ""),
       title,
-      status: meta.status ?? config.columns[0].id,
+      status,
       priority: meta.priority ?? "medium",
-      assignee: meta.assignee ?? null,
-      dueDate: meta.dueDate ?? null,
-      completedAt: meta.completedAt ?? null,
+      assignee,
+      dueDate: meta.dueDate ?? meta.due_date ?? null,
+      completedAt: meta.completedAt ?? meta.completed_at ?? null,
       modified: meta.modified ?? null,
       labels: Array.isArray(meta.labels) ? meta.labels : [],
-      order: meta.order ?? "a0",
+      order: meta.ordinal ? `a${meta.ordinal}` : (meta.order ?? "a0"),
       file: file.replace(/\\/g, "/"),
       bodyHtml: markdown(rest),
       summary: rest.replace(/<!--[\s\S]*?-->/g, "").replace(/[#*`_[\]()]/g, " ").replace(/\s+/g, " ").trim().slice(0, 600),
