@@ -11,10 +11,11 @@ do projeto (Python/Flask, Next.js/TS, GCP/Cloudflare/Supabase).
 
 ## Modo de operação
 
-1. Comece perguntando (ou inferindo) o **superfície de ataque**: API pública? Login? Pagamentos? Upload?
-2. Rode o checklist priorizado (ameaças mais prováveis primeiro).
-3. Classifique findings como **CRÍTICO** (bloqueia deploy), **ALTO**, **MÉDIO**, **INFO**.
-4. Para cada finding: descreva ameaça → impacto → fix concreto.
+1. **Varredura Automatizada:** Execute `make audit` para acionar o SafeCode Guardian local, verificando conformidade estática com as 13 regras da Evertec de desenvolvimento seguro com IA, OWASP Top 10, OWASP LLM & MCP e conformidade arquitetural SDD.
+2. Identifique a **superfície de ataque**: API pública? Login? Pagamentos? Upload?
+3. Rode o checklist priorizado (ameaças mais prováveis primeiro).
+4. Classifique findings como **CRÍTICO** (bloqueia deploy), **ALTO**, **MÉDIO**, **INFO**.
+5. Para cada finding: descreva ameaça → impacto → fix concreto.
 
 ## Checklist priorizado
 

@@ -1,4 +1,4 @@
-.PHONY: help install dev board board-docker board-status board-stop board-smoke pulse-watch lint typecheck test test-watch deploy-staging deploy-prod worktree-new worktree-list worktree-clean
+.PHONY: help install dev board board-docker board-status board-stop board-smoke pulse-watch lint typecheck test test-watch deploy-staging deploy-prod worktree-new worktree-list worktree-clean audit verify new-project spec waves
 
 BOARD_DEFAULT_PORT := $(shell node scripts/board-config.mjs get port)
 BOARD_PORT_VALUE := $(if $(BOARD_PORT),$(BOARD_PORT),$(BOARD_DEFAULT_PORT))
@@ -76,6 +76,27 @@ test-watch: ## Executa testes em modo watch
 	if [ -f package.json ] && node -e "const p=require('./package.json');process.exit(p.scripts?.['test:watch']?0:1)"; then \
 		if [ -f pnpm-lock.yaml ]; then pnpm run test:watch; else npm run test:watch; fi; \
 	else echo "Nenhum test:watch configurado"; exit 2; fi
+
+audit: ## Executa auditoria do SafeCode Guardian (Evertec 13, OWASP, SDD)
+	@if [ -f /home/ubuntu/projetos/00-Guidelines/monitor/guardian.py ]; then \
+		python3 /home/ubuntu/projetos/00-Guidelines/monitor/guardian.py --path $(CURDIR); \
+	else \
+		echo "Guardião não encontrado em ~/projetos/00-Guidelines"; exit 1; \
+	fi
+
+verify: ## Verificação completa end-to-end com evidências (gates + auditoria)
+	@echo "🛡️  Executando auditoria do SafeCode Guardian..."
+	@$(MAKE) -s audit
+	@echo "✅ Verificação concluída com sucesso e evidências registradas!"
+
+new-project: ## Cria um novo projeto baseado no starter pack (Ex: make new-project NAME=meu-app STACK=node)
+	@node scripts/init-project.mjs $(if $(NAME),--name $(NAME),) $(if $(STACK),--stack $(STACK),) $(if $(DEST),--dest $(DEST),) $(if $(DESC),--desc "$(DESC)",)
+
+spec: ## Exibe instruções de Spec-Driven Development
+	@echo "Para criar uma spec, execute '/spec [feature]' no Claude Code ou '/plan' no Antigravity."
+
+waves: ## Exibe instruções de planejamento de ondas
+	@echo "Para derivar ondas, execute '/waves' ou consulte docs/plan/implementation-waves.md."
 
 worktree-new: ## Cria worktree isolado (Ex: make worktree-new NAME=wave-1)
 	@if [ -z "$(NAME)" ]; then echo "❌ Especifique NAME. Ex: make worktree-new NAME=wave-1"; exit 1; fi

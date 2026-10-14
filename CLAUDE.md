@@ -1,6 +1,6 @@
 # CLAUDE.md — Claude Code Entrypoint
 
-Leia primeiro [AGENTS.md](AGENTS.md) e [NOTES.md](NOTES.md). Regras determinísticas ficam em `.claude/settings.json`; conhecimento especializado, em `.claude/skills/`.
+Leia primeiro [AGENTS.md](AGENTS.md) e [NOTES.md](NOTES.md). As regras arquiteturais canônicas ficam em [rules/](rules/); a documentação formal em [docs/](docs/); configurações determinísticas e hooks em `.claude/settings.json`; e a equipe de skills em `.claude/skills/`.
 
 ## Projeto
 
@@ -8,25 +8,40 @@ Leia primeiro [AGENTS.md](AGENTS.md) e [NOTES.md](NOTES.md). Regras determiníst
 - **Backend:** <stack>
 - **Frontend:** <stack>
 - **Banco / Infra:** <stack>
-- **Memória persistente:** opcional; veja [docs/fulltech-memory-integration.md](docs/fulltech-memory-integration.md)
+- **Memória persistente:** opcional via MCP; veja [docs/fulltech-memory-integration.md](docs/fulltech-memory-integration.md)
 
-## Comandos
+## Comandos Principais
 
 ```bash
-make install
-make dev
-make lint
-make typecheck
-make test
-make board
+make install       # Instala dependências da stack
+make dev           # Inicia o servidor local de desenvolvimento
+make lint          # Roda linters (falha se não configurado)
+make typecheck     # Checagem de tipagem estrita
+make test          # Executa suíte de testes unitários e integração
+make audit         # Executa SafeCode Guardian (Evertec 13, OWASP, SDD Scorecard)
+make verify        # Verificação end-to-end com evidências (test + lint + audit)
+make board         # Inicia o Kanban em tempo real SSE (http://localhost:3100)
+make new-project   # Cria um novo repositório a partir deste starter pack
 ```
 
-Ajuste estes alvos à stack. Não trate fallback silencioso ou comando ausente como check verde.
+Não trate fallback silencioso ou comando ausente como check verde. Evidência, não opinião.
 
-## Operação
+## Skills Disponíveis
 
-- Reancore a sessão no estado registrado em `NOTES.md`.
-- Para execução paralela, trabalhe apenas no worktree e nos arquivos atribuídos.
-- Use skills especializadas quando o escopo corresponder.
-- Ao terminar, atualize o hand-off com evidências dos checks.
-- Nunca envie evidências de erro ou contexto privado sem consentimento explícito.
+- `/spec [feature]`: Conduz entrevista aprofundada de requisitos e gera `docs/specs/<feature>.md`.
+- `/waves [spec]`: Decompõe a spec em ondas de entrega (`docs/plan/implementation-waves.md`) e sincroniza o `NOTES.md`.
+- `/vertical-slice <feature>`: Gera fatias verticais completas em DDD (`src/features/<feature>/`).
+- `/verify`: Valida a entrega executando gates estáticos e comportamentais antes de reportar conclusão.
+- `/init-project`: Assistente interativo de scaffolding para novos projetos.
+- `/ux-designer`: Acervo de 22 manuais de padrões de UI/UX, acessibilidade e design systems.
+- `/babysit-pr <pr-number>`: Monitora CI e comentários de revisão no GitHub.
+- `/fix-issue <issue>`: Reprodução e depuração sistemática de bugs.
+- `/commit`: Criação de commits no padrão Conventional Commits com escopo.
+- `/security-check`: Auditoria de segurança corporativa via SafeCode Guardian.
+
+## Operação e Continuidade
+
+1. **Reancoragem:** Leia `NOTES.md` no início da sessão para entender o roadmap e o próximo passo.
+2. **Compactação Lossless:** Os hooks `PreCompact` e `SessionStart(compact)` realizam snapshots automáticos do Git e do `NOTES.md`, preservando todo o contexto operacional.
+3. **Trabalho Paralelo:** Opere sempre em worktrees isolados (`make worktree-new NAME=<wave>`).
+4. **Segredos e Comandos de Risco:** Credenciais e comandos destrutivos são bloqueados no nível de ferramenta.

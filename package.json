@@ -9,6 +9,9 @@
     "start": "node server.mjs",
     "dev": "node server.mjs",
     "build": "node scripts/build-board.mjs",
-    "pulse": "node scripts/agent-pulse.mjs"
+    "pulse": "node scripts/agent-pulse.mjs",
+    "audit": "python3 /home/ubuntu/projetos/00-Guidelines/monitor/guardian.py --path .",
+    "verify": "make verify",
+    "new-project": "node scripts/init-project.mjs"
   }
 }

@@ -1,131 +1,235 @@
 {
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
   "autoMemoryEnabled": true,
-  "autoDreamEnable": true,
-    "permissions": {
-      "allow": [
-        "Read(**)",
-        "Glob(**)",
-        "Grep(**)",
-        "Bash(git status:*)",
-        "Bash(git diff:*)",
-        "Bash(git log:*)",
-        "Bash(git branch:*)",
-        "Bash(npm run lint:*)",
-        "Bash(npm run typecheck:*)",
-        "Bash(npm run test:*)",
-        "Bash(pnpm lint:*)",
-        "Bash(pnpm typecheck:*)",
-        "Bash(pnpm test:*)",
-        "Bash(pytest:*)",
-        "Bash(ruff check:*)",
-        "Bash(mypy:*)"
-      ],
-
-      "ask": [
-        "Bash(git push:*)",
-        "Bash(git commit:*)",
-        "Bash(npm publish:*)",
-        "Bash(pnpm publish:*)",
-        "WebFetch"
-      ],
-
-      "deny": [
-        "Read(**/.env)",
-        "Read(**/.env.*)",
-        "Read(**/secrets/**)",
-        "Read(**/*.pem)",
-        "Read(**/*.key)",
-        "Read(**/credentials.json)",
-        "Read(**/service-account*.json)",
-        "Bash(sudo:*)",
-        "Bash(rm -rf /:*)",
-        "Bash(curl * | sh:*)",
-        "Bash(wget * | sh:*)",
-        "Bash(ssh:*)",
-        "Edit(**/.env)",
-        "Edit(**/.env.*)",
-        "Write(**/.env)",
-        "Write(**/.env.*)"
-      ]
-    },
-
-    "env": {
-      "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
-      "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS":"1"
-    },
-
-    "hooks": {
-      "PreToolUse": [
-        {
-          "matcher": "Bash",
-          "hooks": [
-            {
-              "type": "command",
-              "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/pre-bash-guard.sh",
-              "timeout": 10
-            },
-            {
-              "type": "command",
-              "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/pre-commit-secrets.sh",
-              "timeout": 15
-            },
-            {
-              "type": "command",
-              "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/agent-pulse.sh",
-              "timeout": 10
-            }
-          ]
-        }
-      ],
-      "PostToolUse": [
-        {
-          "matcher": "Write|Edit|NotebookEdit",
-          "hooks": [
-            {
-              "type": "command",
-              "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/post-edit-format.sh",
-              "timeout": 30
-            }
-          ]
-        },
-        {
-          "matcher": "*",
-          "hooks": [
-            {
-              "type": "command",
-              "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/agent-pulse.sh",
-              "timeout": 10
-            }
-          ]
-        }
-      ],
-      "SubagentStop": [
-        {
-          "matcher": "*",
-          "hooks": [
-            {
-              "type": "command",
-              "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/agent-pulse.sh",
-              "timeout": 10
-            }
-          ]
-        }
-      ],
-      "SessionEnd": [
-        {
-          "matcher": "*",
-          "hooks": [
-            {
-              "type": "command",
-              "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/agent-pulse.sh",
-              "timeout": 10
-            }
-          ]
-        }
-      ]
-    },
-
-    "cleanupPeriodDays": 14,
-
-    "enableAllProjectMcpServers": false
+  "autoDreamEnabled": true,
+  "permissions": {
+    "allow": [
+      "Read(**)",
+      "Glob(**)",
+      "Grep(**)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git branch:*)",
+      "Bash(npm run lint:*)",
+      "Bash(npm run typecheck:*)",
+      "Bash(npm run test:*)",
+      "Bash(pnpm lint:*)",
+      "Bash(pnpm typecheck:*)",
+      "Bash(pnpm test:*)",
+      "Bash(pytest:*)",
+      "Bash(ruff check:*)",
+      "Bash(mypy:*)",
+      "Bash(make install:*)",
+      "Bash(make dev:*)",
+      "Bash(make lint:*)",
+      "Bash(make typecheck:*)",
+      "Bash(make test:*)",
+      "Bash(make audit:*)",
+      "Bash(make verify:*)",
+      "Bash(make board:*)"
+    ],
+    "ask": [
+      "Bash(git push:*)",
+      "Bash(git commit:*)",
+      "Bash(npm publish:*)",
+      "Bash(pnpm publish:*)",
+      "WebFetch"
+    ],
+    "deny": [
+      "Read(**/.env)",
+      "Read(**/.env.*)",
+      "Read(**/secrets/**)",
+      "Read(**/*.pem)",
+      "Read(**/*.key)",
+      "Read(**/*.p12)",
+      "Read(**/*.pfx)",
+      "Read(**/id_rsa*)",
+      "Read(**/id_ed25519*)",
+      "Read(**/id_ecdsa*)",
+      "Read(**/credentials.json)",
+      "Read(**/service-account*.json)",
+      "Read(**/serviceAccount*.json)",
+      "Read(~/.aws/**)",
+      "Read(~/.azure/**)",
+      "Read(~/.config/gcloud/**)",
+      "Read(~/.config/gh/**)",
+      "Read(~/.kube/**)",
+      "Read(~/.npmrc)",
+      "Read(~/.pypirc)",
+      "Read(~/.cargo/credentials*)",
+      "Read(~/.netrc)",
+      "Read(~/.git-credentials)",
+      "Read(~/.docker/config.json)",
+      "Read(~/.ssh/**)",
+      "Read(~/.gnupg/**)",
+      "Read(~/.bash_history)",
+      "Read(~/.zsh_history)",
+      "Read(~/.python_history)",
+      "Read(~/.node_repl_history)",
+      "Read(~/.psql_history)",
+      "Bash(wget:*)",
+      "Bash(http:*)",
+      "Bash(httpie:*)",
+      "Bash(rm:*)",
+      "Bash(dd:*)",
+      "Bash(mkfs:*)",
+      "Bash(shred:*)",
+      "Bash(chown:*)",
+      "Bash(sudo:*)",
+      "Bash(git reset --hard:*)",
+      "Bash(git clean:*)",
+      "Bash(git filter-branch:*)",
+      "Bash(git filter-repo:*)",
+      "Bash(git rebase:*)",
+      "Bash(git update-ref:*)",
+      "Bash(gh auth token)",
+      "Bash(gh secret:*)",
+      "Bash(npm publish:*)",
+      "Bash(pnpm publish:*)",
+      "Bash(terraform destroy:*)",
+      "Bash(docker system prune:*)",
+      "Bash(docker volume rm:*)",
+      "Bash(docker compose down -v:*)",
+      "Edit(**/.env)",
+      "Edit(**/.env.*)",
+      "Write(**/.env)",
+      "Write(**/.env.*)"
+    ]
+  },
+  "env": {
+    "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash|Edit|MultiEdit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/block-secrets.sh",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/pre-bash-guard.sh",
+            "timeout": 10
+          },
+          {
+            "type": "command",
+            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/pre-commit-secrets.sh",
+            "timeout": 15
+          },
+          {
+            "type": "command",
+            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/agent-pulse.sh",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/post-edit-format.sh",
+            "timeout": 30
+          },
+          {
+            "type": "command",
+            "command": "node ${CLAUDE_PROJECT_DIR}/.claude/hooks/docs-reminder.js",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/agent-pulse.sh",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/session-start-context.sh",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/session-start-compact-resume.sh",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/pre-compact-snapshot.sh",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/stop-notes-reminder.sh",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/agent-pulse.sh",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/agent-pulse.sh",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  },
+  "cleanupPeriodDays": 14,
+  "enableAllProjectMcpServers": false
 }
