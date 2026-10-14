@@ -102,11 +102,12 @@ test('settings.json: une hooks e mantém permissões do projeto', async () => {
   const dir = makeFixture();
   await retrofit(dir);
   const settings = JSON.parse(fs.readFileSync(path.join(dir, '.claude/settings.json'), 'utf8'));
-  const commands = Object.values(settings.hooks).flat().flatMap((e) => e.hooks.map((h) => h.command));
+  const perEvent = Object.entries(settings.hooks).flatMap(([event, entries]) => entries.flatMap((e) => e.hooks.map((h) => `${event} ${h.command}`)));
+  const commands = perEvent.map((item) => item.slice(item.indexOf(' ') + 1));
 
   assert.ok(commands.includes('${CLAUDE_PROJECT_DIR}/.claude/hooks/pre-bash-guard.sh'));
   assert.ok(commands.some((c) => c.endsWith('block-secrets.sh')));
-  assert.equal(new Set(commands).size, commands.length, 'hook duplicado');
+  assert.equal(new Set(perEvent).size, perEvent.length, 'hook duplicado no mesmo evento');
   assert.deepEqual(settings.permissions.allow, ['Bash(make ci:*)']);
   assert.ok(settings.permissions.deny.includes('Read(**/.env)'));
   assert.ok(settings.permissions.deny.every((rule) => rule.startsWith('Read(')), 'deny de Bash não pode entrar sem revisão');
@@ -117,6 +118,14 @@ test('mergeSettings não duplica hook já registrado em outro matcher', () => {
   const project = { hooks: { PreToolUse: [{ matcher: '*', hooks: [{ type: 'command', command: cmd }] }] } };
   const starter = { hooks: { PreToolUse: [{ matcher: 'Bash', hooks: [{ type: 'command', command: cmd }] }] } };
   assert.deepEqual(mergeSettings(project, starter).merged.hooks, project.hooks);
+});
+
+test('mergeSettings: mesmo comando em eventos diferentes entra em cada evento', () => {
+  const cmd = '${CLAUDE_PROJECT_DIR}/.claude/hooks/pulse.sh';
+  const entry = { matcher: '*', hooks: [{ type: 'command', command: cmd }] };
+  const starter = { hooks: { PreToolUse: [entry], PostToolUse: [entry], SessionEnd: [entry] } };
+  const { merged } = mergeSettings({}, starter);
+  assert.deepEqual(Object.keys(merged.hooks).sort(), ['PostToolUse', 'PreToolUse', 'SessionEnd']);
 });
 
 test('Makefile: injeta só alvos ausentes e verify não é verde falso', async () => {

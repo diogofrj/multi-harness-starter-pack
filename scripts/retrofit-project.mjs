@@ -319,22 +319,23 @@ function syncContracts(meta, opts) {
 // .claude/settings.json: merge, nunca cópia
 // ---------------------------------------------------------------------------
 
-function hookCommands(settings) {
+function hookCommands(settings, event) {
   const commands = new Set();
-  for (const entries of Object.values(settings.hooks || {})) {
+  for (const [name, entries] of Object.entries(settings.hooks || {})) {
+    if (event && name !== event) continue;
     for (const entry of entries) for (const hook of entry.hooks || []) commands.add(hook.command);
   }
   return commands;
 }
 
-/** Une hooks do starter aos do projeto (dedupe por comando) e acrescenta só os deny de leitura de segredo. */
+/** Une hooks do starter aos do projeto (dedupe por comando dentro de cada evento) e acrescenta só os deny de leitura de segredo. */
 export function mergeSettings(project, starter) {
   const merged = structuredClone(project);
   const suggestions = [];
-  const known = hookCommands(project);
 
   merged.hooks = merged.hooks || {};
   for (const [event, entries] of Object.entries(starter.hooks || {})) {
+    const known = hookCommands(project, event);
     merged.hooks[event] = merged.hooks[event] || [];
     for (const entry of entries) {
       const missing = (entry.hooks || []).filter((hook) => !known.has(hook.command));
