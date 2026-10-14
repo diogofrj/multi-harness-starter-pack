@@ -1,8 +1,9 @@
-.PHONY: help install dev board board-docker board-status board-stop board-smoke pulse-watch lint typecheck test test-watch deploy-staging deploy-prod worktree-new worktree-list worktree-clean audit verify new-project spec waves backlog-browser board-all
+.PHONY: help install dev board board-docker board-status board-stop board-smoke pulse-watch lint typecheck test test-watch deploy-staging deploy-prod worktree-new worktree-list worktree-clean audit audit-report verify new-project spec waves backlog-browser board-all
 
 BOARD_DEFAULT_PORT := $(shell node scripts/board-config.mjs get port)
 BOARD_PORT_VALUE := $(if $(BOARD_PORT),$(BOARD_PORT),$(BOARD_DEFAULT_PORT))
 BACKLOG_PORT ?= 6420
+TARGET ?= $(CURDIR)
 
 help: ## Exibe os comandos disponíveis
 	@echo "Comandos disponíveis:"
@@ -102,12 +103,15 @@ test-watch: ## Executa testes em modo watch
 		if [ -f pnpm-lock.yaml ]; then pnpm run test:watch; else npm run test:watch; fi; \
 	else echo "Nenhum test:watch configurado"; exit 2; fi
 
-audit: ## Executa auditoria do SafeCode Guardian (Evertec 13, OWASP, SDD)
+audit: ## Executa auditoria do SafeCode Guardian (Ex: make audit TARGET=/caminho/repo)
 	@if [ -f /home/ubuntu/projetos/00-Guidelines/monitor/guardian.py ]; then \
-		python3 /home/ubuntu/projetos/00-Guidelines/monitor/guardian.py --path $(CURDIR); \
+		python3 /home/ubuntu/projetos/00-Guidelines/monitor/guardian.py --path $(TARGET); \
 	else \
 		echo "Guardião não encontrado em ~/projetos/00-Guidelines"; exit 1; \
 	fi
+
+audit-report: ## Exibe relatório detalhado da auditoria com diagnóstico e remediações (Ex: make audit-report TARGET=/caminho/repo)
+	@node scripts/audit-report.mjs $(TARGET)
 
 verify: ## Verificação completa end-to-end com evidências (gates + auditoria)
 	@echo "🛡️  Executando auditoria do SafeCode Guardian..."

@@ -73,7 +73,8 @@ Execute `make help` no terminal para listar todos os comandos disponíveis:
 ### C. Segurança & Auditoria Corporativa
 | Comando | O que faz | O que sobe / afeta |
 | :--- | :--- | :--- |
-| `make audit` | Executa o motor **SafeCode Guardian** localmente: valida as 13 regras Evertec de desenvolvimento seguro por IA, OWASP Top 10, OWASP LLM & MCP e conformidade SDD. | Gera scorecard JSON com nota (A a F) e Red Flags. |
+| `make audit` | Executa o motor **SafeCode Guardian** no repositório atual ou externo (`TARGET=/caminho/repo`): valida 13 regras Evertec, OWASP Top 10, LLM/MCP e SDD. | Gera scorecard JSON com nota (A a F) e Red Flags. |
+| `make audit-report` | Exibe o relatório detalhado de auditoria no terminal (Red Flags, violações com arquivo:linha, snippets de código, remediações e links oficiais). | Diagnóstico imediato no terminal. |
 | `make verify` | Verificação completa end-to-end antes de fechar uma entrega: executa os gates de qualidade e a auditoria do SafeCode Guardian com evidências. | Evidência de conclusão para o hand-off. |
 
 ### D. Kanban, Backlog & Telemetria em Tempo Real
@@ -139,11 +140,18 @@ make install
 7. Atualize o `NOTES.md` com as evidências e o status ✅.
 
 ### Auditar a Segurança com o SafeCode Guardian
-```bash
-make audit
-```
-Para ver o dashboard central interativo com remediações de código:
-Acesse **`http://localhost:8765/#safecode`** no navegador.
+- **Auditar o próprio projeto:**
+  ```bash
+  make audit
+  make audit-report
+  ```
+- **Auditar repositório externo (ex: fulltech-memory):**
+  ```bash
+  make audit TARGET=/home/ubuntu/projetos/_Fulltech/fulltech-memory
+  make audit-report TARGET=/home/ubuntu/projetos/_Fulltech/fulltech-memory
+  ```
+- **Dashboard Central Interativo com Remediações Visuais:**
+  Acesse **`http://localhost:8765/#safecode`** no navegador para ver trechos de código antes/depois, links oficiais e filtros por severidade.
 
 ### Gerenciar Tarefas no Backlog.md (Kanban & Telemetria)
 - **Criar tarefa via CLI:**
