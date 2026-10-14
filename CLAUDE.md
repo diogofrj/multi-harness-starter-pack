@@ -24,6 +24,7 @@ make board            # Inicia o Kanban Fulltech em tempo real SSE (http://local
 make backlog-browser  # Inicia o Backlog.md Browser oficial (http://localhost:6420)
 make board-all        # Inicia ambos os boards simultaneamente (3100 + 6420)
 make new-project      # Cria um novo repositório a partir deste starter pack
+make retrofit         # Adequa repositório existente ao starter pack (make retrofit TARGET=...)
 ```
 
 Não trate fallback silencioso ou comando ausente como check verde. Evidência, não opinião.
@@ -35,6 +36,7 @@ Não trate fallback silencioso ou comando ausente como check verde. Evidência, 
 - `/vertical-slice <feature>`: Gera fatias verticais completas em DDD (`src/features/<feature>/`).
 - `/verify`: Valida a entrega executando gates estáticos e comportamentais antes de reportar conclusão.
 - `/init-project`: Assistente interativo de scaffolding para novos projetos.
+- `/retrofit-starter-pack [caminho]`: Adequa e moderniza repositórios legados existentes.
 - `/ux-designer`: Acervo de 22 manuais de padrões de UI/UX, acessibilidade e design systems.
 - `/babysit-pr <pr-number>`: Monitora CI e comentários de revisão no GitHub.
 - `/fix-issue <issue>`: Reprodução e depuração sistemática de bugs.

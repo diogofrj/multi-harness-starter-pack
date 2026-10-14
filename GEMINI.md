@@ -30,6 +30,7 @@ make board            # Inicia o Kanban Fulltech em tempo real SSE
 make backlog-browser  # Inicia o Backlog.md Browser oficial (http://localhost:6420)
 make board-all        # Inicia ambos os boards simultaneamente (3100 + 6420)
 make new-project      # Cria um novo repositório a partir deste starter pack
+make retrofit         # Adequa repositório existente ao starter pack (make retrofit TARGET=...)
 ```
 
 ## Operação

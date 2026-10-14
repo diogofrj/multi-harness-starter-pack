@@ -57,6 +57,7 @@ Execute `make help` no terminal para listar todos os comandos disponíveis:
 | Comando | O que faz | O que sobe / afeta |
 | :--- | :--- | :--- |
 | `make new-project` | Instancia um novo repositório limpo, substitui `<placeholders>`, inicializa git e roda auditoria inicial. | Cria pasta em `../<nome>` e valida nota A. |
+| `make retrofit` | Adequa um repositório existente (`TARGET=/caminho/repo`) aos contratos, guardrails, Backlog.md e Makefile do starter pack sem destruir histórico. | Atualiza contratos e injeta governança. |
 | `make spec` | Exibe instruções para conduzir a entrevista de Spec-Driven Development via `/spec` ou `/plan`. | Apenas informativo no terminal. |
 | `make waves` | Exibe instruções para derivar o plano de ondas em `docs/plan/implementation-waves.md`. | Apenas informativo no terminal. |
 
@@ -106,6 +107,7 @@ Todas as skills ficam disponíveis para **Claude Code** (`/comando`), **Antigrav
 - **`/vertical-slice <feature>`**: Cria o scaffold de uma fatia vertical completa em DDD (`domain`, `application`, `infrastructure`, `presentation`) para qualquer linguagem (Python, TypeScript, Go, Rust).
 - **`/verify`**: Valida a entrega executando gates estáticos e comportamentais antes de reportar conclusão.
 - **`/init-project`**: Assistente de scaffolding para inicializar novos projetos a partir deste repositório.
+- **`/retrofit-starter-pack [caminho]`**: Adequa e moderniza repositórios legados existentes aos padrões do starter pack e SafeCode Guardian.
 - **`/ux-designer`**: Acervo com **22 manuais de boas práticas de UX/UI** (design systems, acessibilidade, formulários, tabelas, canvas, AI UX, mobile).
 - **`/babysit-pr <pr>`**: Monitora CI e comentários de revisão no GitHub, aplicando correções automaticamente.
 - **`/fix-issue <issue>`**: Fluxo sistemático de depuração com reprodução obrigatória antes de qualquer correção.
@@ -122,6 +124,15 @@ Todas as skills ficam disponíveis para **Claude Code** (`/comando`), **Antigrav
 make new-project NAME=faturamento-api STACK=node DESC="Microserviço de Cobranças"
 cd ../faturamento-api
 make install
+```
+
+### Adequar Repositório Existente (Retrofit)
+```bash
+# Executa a adequação automática sem destruir o código ou histórico
+make retrofit TARGET=/home/ubuntu/projetos/_Fulltech/fulltech-memory
+
+# Ou via comando/skill no chat:
+/retrofit-starter-pack /home/ubuntu/projetos/_Fulltech/fulltech-memory
 ```
 
 ### Iniciar uma Nova Funcionalidade (Wave)

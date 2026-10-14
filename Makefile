@@ -1,4 +1,4 @@
-.PHONY: help install dev board board-docker board-status board-stop board-smoke pulse-watch lint typecheck test test-watch deploy-staging deploy-prod worktree-new worktree-list worktree-clean audit audit-report verify new-project spec waves backlog-browser board-all
+.PHONY: help install dev board board-docker board-status board-stop board-smoke pulse-watch lint typecheck test test-watch deploy-staging deploy-prod worktree-new worktree-list worktree-clean audit audit-report verify new-project retrofit spec waves backlog-browser board-all
 
 BOARD_DEFAULT_PORT := $(shell node scripts/board-config.mjs get port)
 BOARD_PORT_VALUE := $(if $(BOARD_PORT),$(BOARD_PORT),$(BOARD_DEFAULT_PORT))
@@ -120,6 +120,9 @@ verify: ## Verificação completa end-to-end com evidências (gates + auditoria)
 
 new-project: ## Cria um novo projeto baseado no starter pack (Ex: make new-project NAME=meu-app STACK=node)
 	@node scripts/init-project.mjs $(if $(NAME),--name $(NAME),) $(if $(STACK),--stack $(STACK),) $(if $(DEST),--dest $(DEST),) $(if $(DESC),--desc "$(DESC)",)
+
+retrofit: ## Adequa repositório existente aos padrões do starter pack (Ex: make retrofit TARGET=/caminho/repo)
+	@node scripts/retrofit-project.mjs --target $(TARGET)
 
 spec: ## Exibe instruções de Spec-Driven Development
 	@echo "Para criar uma spec, execute '/spec [feature]' no Claude Code ou '/plan' no Antigravity."
