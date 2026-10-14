@@ -2,6 +2,9 @@
 
 Bootstrap para projetos desenvolvidos por múltiplos harnesses de IA, com contrato compartilhado, trabalho paralelo seguro, hand-offs verificáveis e um board local opcional.
 
+> 📖 **Consulte o [RUNBOOK.md](RUNBOOK.md)** para o índice completo de componentes, guia do `Makefile`, portas de serviços e cheat sheet operacional.
+
+
 ## O que vem pronto
 
 - `AGENTS.md` como contrato canônico entre Codex, Claude Code, Antigravity/Gemini e GitHub Copilot.
