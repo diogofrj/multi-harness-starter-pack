@@ -1,4 +1,4 @@
-.PHONY: help install dev board board-docker board-status board-stop board-smoke pulse-watch lint typecheck test test-watch deploy-staging deploy-prod worktree-new worktree-list worktree-clean audit audit-report verify new-project retrofit spec waves backlog-browser board-all
+.PHONY: help install dev board board-docker board-status board-stop board-smoke pulse-watch lint typecheck test test-watch deploy-staging deploy-prod worktree-new worktree-list worktree-clean audit audit-report audit-gate verify new-project retrofit spec waves backlog-browser board-all
 
 BOARD_DEFAULT_PORT := $(shell node scripts/board-config.mjs get port)
 BOARD_PORT_VALUE := $(if $(BOARD_PORT),$(BOARD_PORT),$(BOARD_DEFAULT_PORT))
@@ -113,10 +113,12 @@ audit: ## Executa auditoria do SafeCode Guardian (Ex: make audit TARGET=/caminho
 audit-report: ## Exibe relatório detalhado da auditoria com diagnóstico e remediações (Ex: make audit-report TARGET=/caminho/repo)
 	@node scripts/audit-report.mjs $(TARGET)
 
-verify: ## Verificação completa end-to-end com evidências (gates + auditoria)
-	@echo "🛡️  Executando auditoria do SafeCode Guardian..."
-	@$(MAKE) -s audit
-	@echo "✅ Verificação concluída com sucesso e evidências registradas!"
+audit-gate: ## Falha se alguma Red Flag do SafeCode Guardian estiver aberta
+	@node scripts/audit-gate.mjs $(TARGET)
+
+verify: ## Gate do projeto (ci se existir, senão test) + audit-gate; falha se qualquer um falhar
+	@if grep -qE '^ci[[:space:]]*:' $(firstword $(MAKEFILE_LIST)); then $(MAKE) -s ci; else $(MAKE) -s test; fi
+	@$(MAKE) -s audit-gate
 
 new-project: ## Cria um novo projeto baseado no starter pack (Ex: make new-project NAME=meu-app STACK=node)
 	@node scripts/init-project.mjs $(if $(NAME),--name $(NAME),) $(if $(STACK),--stack $(STACK),) $(if $(DEST),--dest $(DEST),) $(if $(DESC),--desc "$(DESC)",)

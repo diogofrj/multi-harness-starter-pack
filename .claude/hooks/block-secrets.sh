@@ -22,8 +22,8 @@ TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // empty')
 
 # Patterns proibidos — adicione aqui o que for sensível no seu projeto
 DENY_PATTERNS=(
-  '\.env$'
-  '\.env\.'
+  # .env como arquivo (início, após / ou espaço), não como trecho de código (process.env.X)
+  '(^|[^[:alnum:]_])\.env(\.[[:alnum:]_-]+)?([^[:alnum:]_.-]|$)'
   'secrets/'
   'credentials\.json'
   'service-account.*\.json'
@@ -39,6 +39,7 @@ DENY_PATTERNS=(
 )
 
 # Comandos perigosos que merecem bloqueio mesmo se path estiver ok
+# shellcheck disable=SC2016  # padrões literais: casam o texto $HOME no comando
 DANGEROUS_COMMANDS=(
   'rm -rf /'
   'rm -rf ~'
@@ -49,10 +50,16 @@ DANGEROUS_COMMANDS=(
   'chmod -R 777 /'
 )
 
+# Arquivos-modelo de ambiente não têm segredo: saem da checagem.
+strip_env_templates() {
+  printf '%s' "$1" | sed -E 's/\.env\.(example|sample|template|dist)([^[:alnum:]_.-]|$)/\2/g'
+}
+
 # Verifica file_path
 if [[ -n "$FILE_PATH" ]]; then
+  CHECK_PATH=$(strip_env_templates "$FILE_PATH")
   for pattern in "${DENY_PATTERNS[@]}"; do
-    if [[ "$FILE_PATH" =~ $pattern ]]; then
+    if [[ "$CHECK_PATH" =~ $pattern ]]; then
       echo "[block-secrets] BLOCKED: file_path '$FILE_PATH' casa com pattern proibido '$pattern'" >&2
       echo "[block-secrets] tool: $TOOL_NAME" >&2
       exit 2
@@ -63,8 +70,9 @@ fi
 # Verifica command (para tool Bash)
 if [[ -n "$COMMAND" ]]; then
   # Patterns sensíveis no comando inteiro
+  CHECK_CMD=$(strip_env_templates "$COMMAND")
   for pattern in "${DENY_PATTERNS[@]}"; do
-    if [[ "$COMMAND" =~ $pattern ]]; then
+    if [[ "$CHECK_CMD" =~ $pattern ]]; then
       echo "[block-secrets] BLOCKED: command toca em path sensível ('$pattern')" >&2
       echo "[block-secrets] command: $COMMAND" >&2
       exit 2

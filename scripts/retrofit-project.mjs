@@ -3,497 +3,657 @@
  * scripts/retrofit-project.mjs
  *
  * Motor de Retrofit e Adequação do Multi-Harness Enterprise Starter Pack.
- * Analisa um repositório existente, injeta contratos canônicos, guardrails determinísticos,
- * padrão Backlog.md, telemetria e alvos de Makefile sem destruir histórico ou código da aplicação.
- * Em seguida, roda a auditoria do SafeCode Guardian e gera a trilha de adequação.
+ * Adequa um repositório existente sem destruir o que é dele:
+ *   - arquivo que já existe nunca é sobrescrito (só com --force);
+ *   - contratos existentes recebem um bloco gerenciado entre marcadores, idempotente;
+ *   - .claude/settings.json é mesclado (hooks por união), não substituído;
+ *   - Makefile recebe só os alvos e variáveis que faltam;
+ *   - tarefas do Backlog.md são criadas pelo CLI `backlog`, nunca escritas à mão.
  *
  * Uso:
- *   node scripts/retrofit-project.mjs --target /caminho/do/projeto
- *   node scripts/retrofit-project.mjs --target ../meu-repo --dry-run
+ *   node scripts/retrofit-project.mjs --target /caminho/do/projeto [--dry-run] [--skip-audit]
+ *                                     [--force] [--emit-starter-copies]
  */
 
 import fs from 'node:fs';
 import path from 'node:path';
-import { execSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const STARTER_ROOT = path.resolve(__dirname, '..');
+const STARTER_ROOT = path.resolve(path.dirname(__filename), '..');
+const GUARDIAN_SCRIPT = process.env.SAFECODE_GUARDIAN || '/home/ubuntu/projetos/00-Guidelines/monitor/guardian.py';
+const MARKER_START = '<!-- fulltech-governance:start -->';
+const MARKER_END = '<!-- fulltech-governance:end -->';
+const CUSTOMIZE = '[CUSTOMIZE]';
 
-function parseArgs() {
-  const args = process.argv.slice(2);
-  const options = {
-    target: '',
-    dryRun: false,
-    skipAudit: false,
-  };
+const CONTRACTS = ['AGENTS.md', 'CLAUDE.md', 'GEMINI.md', 'RUNBOOK.md'];
+const SCRIPTS_TO_COPY = [
+  'board-config.mjs',
+  'board-cards.mjs',
+  'build-board.mjs',
+  'worktree-pulse.mjs',
+  'worktree-pulse-daemon.sh',
+  'agent-pulse.mjs',
+  'agent-pulse-hook.sh',
+  'audit-report.mjs',
+  'audit-gate.mjs',
+];
+const GOVERNANCE_TARGETS = [
+  'audit', 'audit-report', 'audit-gate', 'verify',
+  'board', 'backlog-browser', 'board-all', 'board-status', 'board-stop',
+];
+const GOVERNANCE_VARS = ['BOARD_DEFAULT_PORT', 'BOARD_PORT_VALUE', 'BACKLOG_PORT', 'TARGET'];
 
-  for (let i = 0; i < args.length; i++) {
-    const arg = args[i];
-    if (arg === '--target' && args[i + 1]) options.target = args[++i];
+let report;
+
+function parseArgs(argv) {
+  const options = { target: '', dryRun: false, skipAudit: false, force: false, emitStarterCopies: false };
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i];
+    if (arg === '--target' && argv[i + 1]) options.target = argv[++i];
     else if (arg === '--dry-run') options.dryRun = true;
     else if (arg === '--skip-audit') options.skipAudit = true;
+    else if (arg === '--force') options.force = true;
+    else if (arg === '--emit-starter-copies') options.emitStarterCopies = true;
     else if (!options.target && !arg.startsWith('--')) options.target = arg;
   }
   return options;
 }
 
-function detectProjectMetadata(targetDir) {
-  let name = path.basename(targetDir);
-  let stack = 'node';
-  let desc = 'Serviço corporativo Fulltech';
-  let owner = `fulltech/${name}`;
+function rel(targetDir, file) {
+  return path.relative(targetDir, file) || file;
+}
 
-  // Tenta ler package.json
-  const pkgPath = path.join(targetDir, 'package.json');
-  if (fs.existsSync(pkgPath)) {
-    try {
-      const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
-      if (pkg.name) name = pkg.name;
-      if (pkg.description) desc = pkg.description;
-      stack = 'node';
-    } catch {}
-  } else if (fs.existsSync(path.join(targetDir, 'pyproject.toml')) || fs.existsSync(path.join(targetDir, 'requirements.txt'))) {
-    stack = 'python';
-  } else if (fs.existsSync(path.join(targetDir, 'go.mod'))) {
-    stack = 'go';
-  } else if (fs.existsSync(path.join(targetDir, 'Cargo.toml'))) {
-    stack = 'rust';
-  }
+function hasBin(name) {
+  return spawnSync(name, ['--version'], { stdio: 'ignore' }).status === 0;
+}
 
-  // Tenta extrair remote do Git
+// ---------------------------------------------------------------------------
+// Metadados do projeto
+// ---------------------------------------------------------------------------
+
+function readJson(file) {
   try {
-    const remote = execSync('git config --get remote.origin.url', { cwd: targetDir, encoding: 'utf8' }).trim();
-    if (remote) {
-      const match = remote.match(/[:/]([^/]+\/[^/]+?)(?:\.git)?$/);
-      if (match) owner = match[1];
-    }
-  } catch {}
-
-  return { name, stack, desc, owner };
-}
-
-function copyFileSafe(src, dest, dryRun) {
-  if (dryRun) {
-    console.log(`[DRY-RUN] Copiando: ${path.relative(STARTER_ROOT, src)} -> ${dest}`);
-    return;
+    return JSON.parse(fs.readFileSync(file, 'utf8'));
+  } catch {
+    return null;
   }
-  fs.mkdirSync(path.dirname(dest), { recursive: true });
-  fs.copyFileSync(src, dest);
 }
 
-function copyDirRecursive(srcDir, destDir, dryRun, filter = null) {
-  if (!fs.existsSync(srcDir)) return;
-  const entries = fs.readdirSync(srcDir, { withFileTypes: true });
+function collectNodeDeps(targetDir) {
+  const manifests = [path.join(targetDir, 'package.json')];
+  for (const group of ['apps', 'packages']) {
+    const dir = path.join(targetDir, group);
+    if (!fs.existsSync(dir)) continue;
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      if (entry.isDirectory()) manifests.push(path.join(dir, entry.name, 'package.json'));
+    }
+  }
+  const deps = new Set();
+  for (const manifest of manifests) {
+    const pkg = readJson(manifest);
+    if (!pkg) continue;
+    for (const key of ['dependencies', 'devDependencies']) {
+      for (const dep of Object.keys(pkg[key] || {})) deps.add(dep);
+    }
+  }
+  return deps;
+}
 
-  for (const entry of entries) {
+function pickLabels(deps, table) {
+  return table.filter(([dep]) => deps.has(dep)).map(([, label]) => label);
+}
+
+function describeNodeStack(deps) {
+  const frontend = pickLabels(deps, [['next', 'Next.js'], ['react', 'React'], ['vue', 'Vue'], ['svelte', 'Svelte'], ['@angular/core', 'Angular']]);
+  const server = pickLabels(deps, [['@nestjs/core', 'NestJS'], ['fastify', 'Fastify'], ['express', 'Express'], ['hono', 'Hono']]);
+  const data = pickLabels(deps, [['pg', 'PostgreSQL'], ['postgres', 'PostgreSQL'], ['mysql2', 'MySQL'], ['mongodb', 'MongoDB'], ['mongoose', 'MongoDB'], ['drizzle-orm', 'Drizzle'], ['@prisma/client', 'Prisma']]);
+  const runtime = deps.has('typescript') ? 'Node.js + TypeScript' : 'Node.js';
+  return {
+    backend: [runtime, ...server].join(' + '),
+    frontend: frontend.length ? [...new Set(frontend)].join(' + ') : CUSTOMIZE,
+    data: data.length ? [...new Set(data)].join(' + ') : CUSTOMIZE,
+  };
+}
+
+function describePythonStack(targetDir) {
+  const text = ['pyproject.toml', 'requirements.txt']
+    .map((f) => path.join(targetDir, f))
+    .filter((f) => fs.existsSync(f))
+    .map((f) => fs.readFileSync(f, 'utf8').toLowerCase())
+    .join('\n');
+  const has = (word) => text.includes(word);
+  const server = [['fastapi', 'FastAPI'], ['django', 'Django'], ['flask', 'Flask']].filter(([w]) => has(w)).map(([, l]) => l);
+  const data = [['psycopg', 'PostgreSQL'], ['sqlalchemy', 'SQLAlchemy'], ['pymongo', 'MongoDB']].filter(([w]) => has(w)).map(([, l]) => l);
+  return {
+    backend: ['Python', ...server].join(' + '),
+    frontend: CUSTOMIZE,
+    data: data.length ? data.join(' + ') : CUSTOMIZE,
+  };
+}
+
+function detectProjectMetadata(targetDir) {
+  const meta = {
+    name: path.basename(targetDir),
+    stack: CUSTOMIZE,
+    desc: CUSTOMIZE,
+    owner: CUSTOMIZE,
+    backend: CUSTOMIZE,
+    frontend: CUSTOMIZE,
+    data: CUSTOMIZE,
+  };
+
+  const pkg = readJson(path.join(targetDir, 'package.json'));
+  if (pkg) {
+    if (pkg.name) meta.name = pkg.name;
+    if (pkg.description) meta.desc = pkg.description;
+    meta.stack = 'node';
+    Object.assign(meta, describeNodeStack(collectNodeDeps(targetDir)));
+  } else if (fs.existsSync(path.join(targetDir, 'pyproject.toml')) || fs.existsSync(path.join(targetDir, 'requirements.txt'))) {
+    meta.stack = 'python';
+    Object.assign(meta, describePythonStack(targetDir));
+  } else if (fs.existsSync(path.join(targetDir, 'go.mod'))) {
+    Object.assign(meta, { stack: 'go', backend: 'Go' });
+  } else if (fs.existsSync(path.join(targetDir, 'Cargo.toml'))) {
+    Object.assign(meta, { stack: 'rust', backend: 'Rust' });
+  }
+
+  try {
+    const remote = execFileSync('git', ['config', '--get', 'remote.origin.url'], {
+      cwd: targetDir, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'],
+    }).trim();
+    const match = remote.match(/[:/]([^/]+\/[^/]+?)(?:\.git)?$/);
+    if (match) meta.owner = match[1];
+  } catch {
+    // sem remote: owner fica [CUSTOMIZE]
+  }
+  return meta;
+}
+
+function renderTemplate(content, meta) {
+  return content
+    .replace(/^(- \*\*Backend:\*\*) <stack>$/m, `$1 ${meta.backend}`)
+    .replace(/^(- \*\*Frontend:\*\*) <stack>$/m, `$1 ${meta.frontend}`)
+    .replace(/^(- \*\*Banco \/ Infra:\*\*) <stack>$/m, `$1 ${meta.data}`)
+    .replaceAll('multi-harness-starter-pack', meta.name)
+    .replaceAll('<nome>', meta.name)
+    .replaceAll('<project-name>', meta.name)
+    .replaceAll('<owner/repo>', meta.owner)
+    .replaceAll('<stack>', meta.stack)
+    .replaceAll('<resultado esperado>', meta.desc);
+}
+
+// ---------------------------------------------------------------------------
+// Escrita não destrutiva
+// ---------------------------------------------------------------------------
+
+/** Grava `content` em `dest` sem nunca sobrescrever conteúdo diferente, salvo --force. */
+function writeNoClobber(content, dest, opts, mode) {
+  const label = rel(opts.targetDir, dest);
+  if (fs.existsSync(dest)) {
+    const current = fs.readFileSync(dest);
+    if (Buffer.compare(current, Buffer.from(content)) === 0) return 'identical';
+    if (!opts.force) {
+      report.preserved.push(label);
+      if (opts.emitStarterCopies && !opts.dryRun) fs.writeFileSync(`${dest}.starter`, content);
+      return 'preserved';
+    }
+    report.updated.push(`${label} (--force)`);
+  } else {
+    report.created.push(label);
+  }
+  if (!opts.dryRun) {
+    fs.mkdirSync(path.dirname(dest), { recursive: true });
+    fs.writeFileSync(dest, content);
+    if (mode !== undefined) fs.chmodSync(dest, mode);
+  }
+  return 'written';
+}
+
+function copyNoClobber(src, dest, opts) {
+  return writeNoClobber(fs.readFileSync(src), dest, opts, fs.statSync(src).mode & 0o777);
+}
+
+function copyDirNoClobber(srcDir, destDir, opts) {
+  if (!fs.existsSync(srcDir)) return;
+  for (const entry of fs.readdirSync(srcDir, { withFileTypes: true })) {
     const srcPath = path.join(srcDir, entry.name);
     const destPath = path.join(destDir, entry.name);
-
-    if (filter && !filter(srcPath, entry)) continue;
-
     if (entry.isDirectory()) {
-      if (!dryRun) fs.mkdirSync(destPath, { recursive: true });
-      copyDirRecursive(srcPath, destPath, dryRun, filter);
+      copyDirNoClobber(srcPath, destPath, opts);
     } else if (entry.isSymbolicLink()) {
-      if (!dryRun) {
-        try {
-          const target = fs.readlinkSync(srcPath);
-          fs.mkdirSync(path.dirname(destPath), { recursive: true });
-          if (fs.existsSync(destPath)) fs.unlinkSync(destPath);
-          fs.symlinkSync(target, destPath);
-        } catch {}
+      if (fs.existsSync(destPath) || isSymlink(destPath)) {
+        report.preserved.push(rel(opts.targetDir, destPath));
+        continue;
+      }
+      report.created.push(rel(opts.targetDir, destPath));
+      if (!opts.dryRun) {
+        fs.mkdirSync(path.dirname(destPath), { recursive: true });
+        fs.symlinkSync(fs.readlinkSync(srcPath), destPath);
       }
     } else if (entry.isFile()) {
-      copyFileSafe(srcPath, destPath, dryRun);
+      copyNoClobber(srcPath, destPath, opts);
     }
   }
 }
 
-function updateMakefile(targetDir, dryRun) {
-  const makefilePath = path.join(targetDir, 'Makefile');
-  const starterMakefile = path.join(STARTER_ROOT, 'Makefile');
-
-  const requiredTargets = [
-    'audit:',
-    'audit-report:',
-    'verify:',
-    'board:',
-    'backlog-browser:',
-    'board-all:',
-    'board-status:',
-    'board-stop:',
-  ];
-
-  if (!fs.existsSync(makefilePath)) {
-    console.log('  ➕ Criando Makefile base com os alvos do starter pack...');
-    copyFileSafe(starterMakefile, makefilePath, dryRun);
-    return;
+function isSymlink(file) {
+  try {
+    return fs.lstatSync(file).isSymbolicLink();
+  } catch {
+    return false;
   }
-
-  const existingContent = fs.readFileSync(makefilePath, 'utf8');
-  const missingTargets = requiredTargets.filter(t => !existingContent.includes(t));
-
-  if (missingTargets.length === 0) {
-    console.log('  ✅ Makefile já contém todos os alvos de governança e auditoria.');
-    return;
-  }
-
-  console.log(`  ➕ Injetando alvos ausentes no Makefile existente (${missingTargets.join(', ')})...`);
-  if (dryRun) return;
-
-  const appendBlock = `
-
-# ==============================================================================
-# Fulltech Multi-Harness Governance & SafeCode Guardian Targets
-# ==============================================================================
-.PHONY: audit audit-report verify board backlog-browser board-all board-status board-stop
-
-BOARD_DEFAULT_PORT ?= 3100
-BOARD_PORT_VALUE ?= $(if $(BOARD_PORT),$(BOARD_PORT),$(BOARD_DEFAULT_PORT))
-BACKLOG_PORT ?= 6420
-TARGET ?= $(CURDIR)
-
-audit: ## Executa auditoria do SafeCode Guardian (Ex: make audit TARGET=/caminho/repo)
-	@if [ -f /home/ubuntu/projetos/00-Guidelines/monitor/guardian.py ]; then \\
-		python3 /home/ubuntu/projetos/00-Guidelines/monitor/guardian.py --path $(TARGET); \\
-	else \\
-		echo "Guardião não encontrado em ~/projetos/00-Guidelines"; exit 1; \\
-	fi
-
-audit-report: ## Exibe relatório detalhado da auditoria com diagnóstico e remediações
-	@if [ -f scripts/audit-report.mjs ]; then \\
-		node scripts/audit-report.mjs $(TARGET); \\
-	elif [ -f /home/ubuntu/projetos/_Fulltech/multi-harness-starter-pack/scripts/audit-report.mjs ]; then \\
-		node /home/ubuntu/projetos/_Fulltech/multi-harness-starter-pack/scripts/audit-report.mjs $(TARGET); \\
-	else \\
-		$(MAKE) -s audit; \\
-	fi
-
-verify: ## Verificação completa end-to-end com evidências (gates + auditoria)
-	@echo "🛡️  Executando auditoria do SafeCode Guardian..."
-	@$(MAKE) -s audit
-	@echo "✅ Verificação concluída com sucesso e evidências registradas!"
-
-board: ## Sobe (ou reaproveita) o board local e o watcher de presença
-	@if [ -f server.mjs ]; then \\
-		if curl -sf -m 2 "http://127.0.0.1:$(BOARD_PORT_VALUE)/api/agents" >/dev/null 2>&1; then echo "board já no ar"; \\
-		else if command -v setsid >/dev/null 2>&1; then setsid nohup env BOARD_PORT=$(BOARD_PORT_VALUE) BOARD_DIST=\$\${BOARD_DIST:-/tmp/$(notdir $(CURDIR))-board-index.html} node $(CURDIR)/server.mjs >/tmp/$(notdir $(CURDIR))-board.log 2>&1 </dev/null & else nohup env BOARD_PORT=$(BOARD_PORT_VALUE) BOARD_DIST=\$\${BOARD_DIST:-/tmp/$(notdir $(CURDIR))-board-index.html} node $(CURDIR)/server.mjs >/tmp/$(notdir $(CURDIR))-board.log 2>&1 </dev/null & fi; echo "board iniciado (log /tmp/$(notdir $(CURDIR))-board.log)"; fi; \\
-		if [ -f scripts/worktree-pulse-daemon.sh ]; then scripts/worktree-pulse-daemon.sh status >/dev/null 2>&1 || scripts/worktree-pulse-daemon.sh start; fi; \\
-		echo "🪐 Fulltech Board: http://localhost:$(BOARD_PORT_VALUE)"; \\
-	else \\
-		echo "server.mjs ausente. Utilize make backlog-browser para visualização."; \\
-	fi
-
-backlog-browser: ## Inicia o Backlog.md Browser oficial (porta 6420)
-	@if curl -sf -m 2 "http://127.0.0.1:$(BACKLOG_PORT)" >/dev/null 2>&1; then \\
-		echo "backlog browser já no ar em http://localhost:$(BACKLOG_PORT)"; \\
-	else \\
-		if command -v setsid >/dev/null 2>&1; then \\
-			setsid nohup backlog browser --port $(BACKLOG_PORT) --no-open </dev/null >/tmp/$(notdir $(CURDIR))-backlog-browser.log 2>&1 & \\
-		else \\
-			nohup backlog browser --port $(BACKLOG_PORT) --no-open </dev/null >/tmp/$(notdir $(CURDIR))-backlog-browser.log 2>&1 & \\
-		fi; \\
-		sleep 1; \\
-		echo "📋 Backlog.md Browser: http://localhost:$(BACKLOG_PORT) (log /tmp/$(notdir $(CURDIR))-backlog-browser.log)"; \\
-	fi
-
-board-all: board backlog-browser ## Sobe simultaneamente o Fulltech Board (3100) e o Backlog Browser (6420)
-
-board-status: ## Exibe o estado do board e do watcher
-	@curl -sf -m 2 "http://127.0.0.1:$(BOARD_PORT_VALUE)/api/agents" >/dev/null 2>&1 && echo "board: no ar em http://localhost:$(BOARD_PORT_VALUE)" || echo "board: fora do ar"
-	@curl -sf -m 2 "http://127.0.0.1:$(BACKLOG_PORT)" >/dev/null 2>&1 && echo "backlog browser: no ar em http://localhost:$(BACKLOG_PORT)" || echo "backlog browser: fora do ar"
-
-board-stop: ## Para o watcher, o board Fulltech e o backlog browser
-	@if [ -f scripts/worktree-pulse-daemon.sh ]; then scripts/worktree-pulse-daemon.sh stop || true; fi
-	@pkill -f "node $(CURDIR)/[s]erver.mjs" 2>/dev/null && echo "board parado" || true
-	@pkill -f "[b]acklog.*browser.*$(BACKLOG_PORT)" 2>/dev/null && echo "backlog browser parado" || true
-`;
-
-  fs.appendFileSync(makefilePath, appendBlock, 'utf8');
 }
 
-function updateNotesFile(targetDir, meta, dryRun) {
-  const notesPath = path.join(targetDir, 'NOTES.md');
-  const banner = `<!-- fulltech-governance:start -->
+/** Insere ou atualiza o bloco gerenciado entre marcadores; o resto do arquivo fica intacto. */
+function upsertManagedBlock(file, body, position, opts) {
+  const block = `${MARKER_START}\n${body.trim()}\n${MARKER_END}`;
+  const existing = fs.readFileSync(file, 'utf8');
+  const start = existing.indexOf(MARKER_START);
+  const end = existing.indexOf(MARKER_END);
+  let next;
+  if (start !== -1 && end > start) {
+    next = existing.slice(0, start) + block + existing.slice(end + MARKER_END.length);
+  } else if (position === 'top') {
+    next = `${block}\n\n${existing}`;
+  } else {
+    next = `${existing.replace(/\s*$/, '')}\n\n${block}\n`;
+  }
+  if (next === existing) return;
+  report.updated.push(`${rel(opts.targetDir, file)} (bloco gerenciado)`);
+  if (!opts.dryRun) fs.writeFileSync(file, next, 'utf8');
+}
+
+// ---------------------------------------------------------------------------
+// Contratos e NOTES.md
+// ---------------------------------------------------------------------------
+
+const AGENTS_BLOCK = `
+## Governança Fulltech (starter pack)
+- Skills do starter pack em \`.claude/skills/\`, espelhadas em \`.agents/skills/\` para os outros harnesses.
+- Segurança: \`make audit\` e \`make audit-report\` (SafeCode Guardian); \`make audit-gate\` falha com Red Flag aberta.
+- \`make verify\` roda o gate do projeto (\`ci\` se existir, senão \`test\`) e o \`audit-gate\`. Verde só com os dois executados.
+- Falso positivo do scanner: \`safecode-ignore <REGRA>: <motivo>\` na linha, ou \`safecode-ignore-file <REGRA>: <motivo>\` no topo do arquivo. Nunca reescrever código só para calar o scanner.
+- Backlog.md sempre pelo CLI \`backlog\`; board em \`make board\` e \`make backlog-browser\`.
+`;
+
+const NOTES_BLOCK = `
 ## Governança Multi-Harness & SafeCode Guardian
 - **Contrato Canônico:** [AGENTS.md](AGENTS.md) adotado como fonte de autoridade comum.
 - **Regra de Ouro:** \`1 Tarefa = 1 Branch (feat/task-X-...) = 1 Worktree = 1 PR = 1 Contexto\`.
-- **Auditoria de Segurança:** Validada via \`make audit\` (Evertec 13, OWASP Top 10, SDD).
-- **Kanban & Backlog:** Gerenciado via padrão Backlog.md (\`backlog/tasks/\` e \`make board\`).
-<!-- fulltech-governance:end -->
-
+- **Auditoria de Segurança:** \`make audit\` (Evertec 13, OWASP Top 10, SDD); \`make verify\` = gate do projeto + Red Flags.
+- **Kanban & Backlog:** Backlog.md via CLI \`backlog\` (\`make board\`, \`make backlog-browser\`).
 `;
 
-  if (!fs.existsSync(notesPath)) {
-    console.log('  ➕ Criando NOTES.md inicial com governança de ondas...');
-    if (dryRun) return;
-    const starterNotes = fs.readFileSync(path.join(STARTER_ROOT, 'NOTES.md'), 'utf8')
-      .replaceAll('<owner/repo>', meta.owner)
-      .replaceAll('<nome>', meta.name)
-      .replaceAll('<stack>', meta.stack)
-      .replaceAll('<resultado esperado>', meta.desc);
-    fs.writeFileSync(notesPath, banner + starterNotes, 'utf8');
+function syncContracts(meta, opts) {
+  for (const contract of CONTRACTS) {
+    const src = path.join(STARTER_ROOT, contract);
+    const dest = path.join(opts.targetDir, contract);
+    if (!fs.existsSync(src)) continue;
+    if (!fs.existsSync(dest)) {
+      writeNoClobber(renderTemplate(fs.readFileSync(src, 'utf8'), meta), dest, opts);
+    } else if (contract === 'AGENTS.md') {
+      upsertManagedBlock(dest, AGENTS_BLOCK, 'bottom', opts);
+    } else {
+      report.preserved.push(contract);
+    }
+  }
+
+  const notes = path.join(opts.targetDir, 'NOTES.md');
+  if (fs.existsSync(notes)) {
+    upsertManagedBlock(notes, NOTES_BLOCK, 'top', opts);
   } else {
-    const existing = fs.readFileSync(notesPath, 'utf8');
-    if (!existing.includes('fulltech-governance:start')) {
-      console.log('  📝 Preservando histórico existente e injetando cabeçalho de governança em NOTES.md...');
-      if (!dryRun) {
-        fs.writeFileSync(notesPath, banner + existing, 'utf8');
+    const starterNotes = renderTemplate(fs.readFileSync(path.join(STARTER_ROOT, 'NOTES.md'), 'utf8'), meta);
+    writeNoClobber(`${MARKER_START}\n${NOTES_BLOCK.trim()}\n${MARKER_END}\n\n${starterNotes}`, notes, opts);
+  }
+
+  copyNoClobber(
+    path.join(STARTER_ROOT, '.github', 'copilot-instructions.md'),
+    path.join(opts.targetDir, '.github', 'copilot-instructions.md'),
+    opts,
+  );
+}
+
+// ---------------------------------------------------------------------------
+// .claude/settings.json: merge, nunca cópia
+// ---------------------------------------------------------------------------
+
+function hookCommands(settings) {
+  const commands = new Set();
+  for (const entries of Object.values(settings.hooks || {})) {
+    for (const entry of entries) for (const hook of entry.hooks || []) commands.add(hook.command);
+  }
+  return commands;
+}
+
+/** Une hooks do starter aos do projeto (dedupe por comando) e acrescenta só os deny de leitura de segredo. */
+export function mergeSettings(project, starter) {
+  const merged = structuredClone(project);
+  const suggestions = [];
+  const known = hookCommands(project);
+
+  merged.hooks = merged.hooks || {};
+  for (const [event, entries] of Object.entries(starter.hooks || {})) {
+    merged.hooks[event] = merged.hooks[event] || [];
+    for (const entry of entries) {
+      const missing = (entry.hooks || []).filter((hook) => !known.has(hook.command));
+      if (missing.length === 0) continue;
+      const sameMatcher = merged.hooks[event].find((e) => (e.matcher ?? null) === (entry.matcher ?? null));
+      if (sameMatcher) sameMatcher.hooks = [...(sameMatcher.hooks || []), ...missing];
+      else merged.hooks[event].push({ ...entry, hooks: missing });
+      for (const hook of missing) known.add(hook.command);
+    }
+    if (merged.hooks[event].length === 0) delete merged.hooks[event];
+  }
+
+  const starterDeny = starter.permissions?.deny || [];
+  const projectDeny = new Set(project.permissions?.deny || []);
+  const readDeny = starterDeny.filter((rule) => rule.startsWith('Read(') && !projectDeny.has(rule));
+  if (readDeny.length) {
+    merged.permissions = merged.permissions || {};
+    merged.permissions.deny = [...(merged.permissions.deny || []), ...readDeny];
+  }
+
+  for (const kind of ['allow', 'ask', 'deny']) {
+    const current = new Set(project.permissions?.[kind] || []);
+    for (const rule of starter.permissions?.[kind] || []) {
+      if (!current.has(rule) && !(kind === 'deny' && rule.startsWith('Read('))) suggestions.push(`permissions.${kind}: ${rule}`);
+    }
+  }
+  for (const key of Object.keys(starter)) {
+    if (key === '$schema' && !(key in merged)) merged[key] = starter[key];
+    else if (!['hooks', 'permissions', '$schema'].includes(key) && JSON.stringify(project[key]) !== JSON.stringify(starter[key])) {
+      suggestions.push(`${key} (valor do starter difere do projeto)`);
+    }
+  }
+  return { merged, suggestions };
+}
+
+function syncSettings(opts) {
+  const src = path.join(STARTER_ROOT, '.claude', 'settings.json');
+  const dest = path.join(opts.targetDir, '.claude', 'settings.json');
+  if (!fs.existsSync(dest)) {
+    copyNoClobber(src, dest, opts);
+    return;
+  }
+  const project = readJson(dest);
+  if (!project) {
+    report.warnings.push('.claude/settings.json existente não é JSON válido; preservado sem merge.');
+    report.preserved.push('.claude/settings.json');
+    return;
+  }
+  const { merged, suggestions } = mergeSettings(project, readJson(src));
+  const next = `${JSON.stringify(merged, null, 2)}\n`;
+  if (next !== `${JSON.stringify(project, null, 2)}\n`) {
+    report.updated.push('.claude/settings.json (merge de hooks e deny de leitura)');
+    if (!opts.dryRun) fs.writeFileSync(dest, next, 'utf8');
+  }
+  if (suggestions.length) {
+    report.warnings.push(`settings.json: ${suggestions.length} item(ns) do starter não aplicados (revise à mão):\n      - ${suggestions.join('\n      - ')}`);
+  }
+}
+
+/** Todo hook registrado precisa existir, e todo scripts/<x> que um hook chama também. */
+function checkHookDependencies(opts) {
+  const settings = readJson(path.join(opts.targetDir, '.claude', 'settings.json'));
+  if (!settings) return;
+  for (const command of hookCommands(settings)) {
+    const file = command.replace(/^node\s+/, '').split(/\s+/)[0].replace('${CLAUDE_PROJECT_DIR}', opts.targetDir);
+    if (!file.startsWith(opts.targetDir)) continue;
+    if (!fs.existsSync(file)) {
+      report.warnings.push(`hook registrado sem arquivo: ${rel(opts.targetDir, file)}`);
+      continue;
+    }
+    const refs = fs.readFileSync(file, 'utf8').match(/scripts\/[\w.-]+\.(?:sh|mjs|js|py)/g) || [];
+    for (const ref of new Set(refs)) {
+      if (!fs.existsSync(path.join(opts.targetDir, ref))) {
+        report.warnings.push(`${rel(opts.targetDir, file)} chama ${ref}, ausente no projeto`);
+      }
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Makefile: só o que falta
+// ---------------------------------------------------------------------------
+
+function escapeRegExp(text) {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function hasMakeTarget(content, target) {
+  return new RegExp(`^${escapeRegExp(target)}\\s*:(?!=)`, 'm').test(content);
+}
+
+function hasMakeVar(content, name) {
+  return new RegExp(`^${name}\\s*[:?+]?=`, 'm').test(content);
+}
+
+function extractMakeTarget(makefile, target) {
+  const lines = makefile.split('\n');
+  const start = lines.findIndex((line) => new RegExp(`^${escapeRegExp(target)}\\s*:(?!=)`).test(line));
+  if (start === -1) return null;
+  const block = [];
+  for (let i = start; i < lines.length && lines[i].trim() !== ''; i++) block.push(lines[i]);
+  return block.join('\n');
+}
+
+function extractMakeVar(makefile, name) {
+  const line = makefile.split('\n').find((l) => new RegExp(`^${name}\\s*[:?]?=`).test(l));
+  return line ? line.replace(/\s*[:?]?=\s*/, ' ?= ') : null;
+}
+
+export function buildMakefileAddition(existing, starterMakefile) {
+  const targets = GOVERNANCE_TARGETS.filter((t) => !hasMakeTarget(existing, t));
+  if (targets.length === 0) return { targets, text: '' };
+  const vars = GOVERNANCE_VARS.filter((v) => !hasMakeVar(existing, v))
+    .map((v) => extractMakeVar(starterMakefile, v))
+    .filter(Boolean);
+  const blocks = targets.map((t) => extractMakeTarget(starterMakefile, t)).filter(Boolean);
+  const text = [
+    '',
+    '# ==============================================================================',
+    '# Fulltech Multi-Harness Governance & SafeCode Guardian Targets',
+    '# ==============================================================================',
+    `.PHONY: ${targets.join(' ')}`,
+    '',
+    ...(vars.length ? [...vars, ''] : []),
+    blocks.join('\n\n'),
+    '',
+  ].join('\n');
+  return { targets, text };
+}
+
+function syncMakefile(opts) {
+  const makefilePath = path.join(opts.targetDir, 'Makefile');
+  const starterMakefilePath = path.join(STARTER_ROOT, 'Makefile');
+  if (!fs.existsSync(makefilePath)) {
+    copyNoClobber(starterMakefilePath, makefilePath, opts);
+    return;
+  }
+  const existing = fs.readFileSync(makefilePath, 'utf8');
+  const { targets, text } = buildMakefileAddition(existing, fs.readFileSync(starterMakefilePath, 'utf8'));
+  if (targets.length === 0) return;
+  report.updated.push(`Makefile (+ ${targets.join(', ')})`);
+  if (!opts.dryRun) fs.appendFileSync(makefilePath, `\n${text}`, 'utf8');
+}
+
+// ---------------------------------------------------------------------------
+// Skills, scripts, backlog
+// ---------------------------------------------------------------------------
+
+function syncSkills(opts) {
+  copyDirNoClobber(path.join(STARTER_ROOT, '.claude', 'skills'), path.join(opts.targetDir, '.claude', 'skills'), opts);
+  const skillsDir = path.join(opts.targetDir, '.claude', 'skills');
+  if (opts.dryRun || !fs.existsSync(skillsDir)) return;
+  const agentsSkillsDir = path.join(opts.targetDir, '.agents', 'skills');
+  fs.mkdirSync(agentsSkillsDir, { recursive: true });
+  for (const skill of fs.readdirSync(skillsDir)) {
+    const link = path.join(agentsSkillsDir, skill);
+    if (fs.existsSync(link) || isSymlink(link)) continue;
+    fs.symlinkSync(`../../.claude/skills/${skill}`, link);
+    report.created.push(rel(opts.targetDir, link));
+  }
+}
+
+function syncBacklog(meta, opts) {
+  const backlogDir = path.join(opts.targetDir, 'backlog');
+  if (!fs.existsSync(path.join(backlogDir, 'config.yml'))) {
+    if (hasBin('backlog')) {
+      report.created.push('backlog/ (backlog init)');
+      if (!opts.dryRun) {
+        execFileSync('backlog', ['init', meta.name, '--defaults', '--integration-mode', 'cli', '--agent-instructions', 'none'], {
+          cwd: opts.targetDir, stdio: 'ignore',
+        });
       }
     } else {
-      console.log('  ✅ NOTES.md já contém bloco de governança.');
+      report.warnings.push('CLI `backlog` ausente: rode `backlog init <nome> --defaults --integration-mode cli --agent-instructions none` no projeto.');
     }
   }
+  copyNoClobber(path.join(STARTER_ROOT, 'backlog', 'harness-models.json'), path.join(backlogDir, 'harness-models.json'), opts);
 }
 
-function updateVsCodeExtensions(targetDir, dryRun) {
-  const vscodeDir = path.join(targetDir, '.vscode');
-  const extFile = path.join(vscodeDir, 'extensions.json');
+function syncScripts(opts) {
+  for (const script of SCRIPTS_TO_COPY) {
+    const src = path.join(STARTER_ROOT, 'scripts', script);
+    if (fs.existsSync(src)) copyNoClobber(src, path.join(opts.targetDir, 'scripts', script), opts);
+  }
+  copyNoClobber(path.join(STARTER_ROOT, 'server.mjs'), path.join(opts.targetDir, 'server.mjs'), opts);
+}
+
+function syncVsCodeExtensions(opts) {
+  const extFile = path.join(opts.targetDir, '.vscode', 'extensions.json');
   const targetExt = 'ysamlan.vscode-backlog-md';
-
   if (!fs.existsSync(extFile)) {
-    console.log('  ➕ Criando .vscode/extensions.json recomendando Backlog.md...');
-    if (dryRun) return;
-    fs.mkdirSync(vscodeDir, { recursive: true });
-    fs.writeFileSync(extFile, JSON.stringify({ recommendations: [targetExt] }, null, 2) + '\n', 'utf8');
-  } else {
-    try {
-      const data = JSON.parse(fs.readFileSync(extFile, 'utf8'));
-      data.recommendations = data.recommendations || [];
-      if (!data.recommendations.includes(targetExt)) {
-        console.log('  📝 Adicionando ysamlan.vscode-backlog-md ao .vscode/extensions.json...');
-        if (!dryRun) {
-          data.recommendations.push(targetExt);
-          fs.writeFileSync(extFile, JSON.stringify(data, null, 2) + '\n', 'utf8');
-        }
-      }
-    } catch {}
+    writeNoClobber(`${JSON.stringify({ recommendations: [targetExt] }, null, 2)}\n`, extFile, opts);
+    return;
+  }
+  const data = readJson(extFile);
+  if (!data) {
+    report.warnings.push('.vscode/extensions.json não é JSON válido; preservado.');
+    return;
+  }
+  data.recommendations = data.recommendations || [];
+  if (data.recommendations.includes(targetExt)) return;
+  data.recommendations.push(targetExt);
+  report.updated.push('.vscode/extensions.json');
+  if (!opts.dryRun) fs.writeFileSync(extFile, `${JSON.stringify(data, null, 2)}\n`, 'utf8');
+}
+
+// ---------------------------------------------------------------------------
+// Auditoria e tarefa de remediação
+// ---------------------------------------------------------------------------
+
+function runAudit(opts) {
+  if (!fs.existsSync(GUARDIAN_SCRIPT)) {
+    report.warnings.push(`SafeCode Guardian não encontrado em ${GUARDIAN_SCRIPT}; auditoria pulada.`);
+    return null;
+  }
+  try {
+    const output = execFileSync('python3', [GUARDIAN_SCRIPT, '--path', opts.targetDir], { encoding: 'utf8' });
+    return JSON.parse(output.trim().split('\n').pop());
+  } catch (err) {
+    report.warnings.push(`Auditoria automática falhou: ${err.message}`);
+    return null;
   }
 }
 
-async function main() {
-  const options = parseArgs();
+function remediationTaskExists(targetDir) {
+  const tasksDir = path.join(targetDir, 'backlog', 'tasks');
+  if (!fs.existsSync(tasksDir)) return false;
+  return fs.readdirSync(tasksDir).some((file) => file.endsWith('.md')
+    && /^title:.*SafeCode Guardian/m.test(fs.readFileSync(path.join(tasksDir, file), 'utf8')));
+}
 
-  if (!options.target) {
-    console.error('❌ Erro: Especifique o repositório alvo via --target <caminho>.');
-    console.error('   Exemplo: node scripts/retrofit-project.mjs --target /home/ubuntu/projetos/_Fulltech/fulltech-memory');
-    process.exit(1);
+function createRemediationTask(audit, opts) {
+  const failed = Object.entries(audit.red_flags || {}).filter(([, status]) => status !== 'passed').map(([rf]) => rf);
+  if (failed.length === 0 || opts.dryRun) return;
+  if (remediationTaskExists(opts.targetDir)) {
+    console.log('  ✅ Tarefa de remediação do SafeCode Guardian já existe no backlog.');
+    return;
   }
-
-  const targetDir = path.resolve(options.target);
-
-  if (!fs.existsSync(targetDir)) {
-    console.error(`❌ Erro: O diretório "${targetDir}" não existe.`);
-    process.exit(1);
-  }
-
-  console.log('========================================================');
-  console.log('🛠️   FULLTECH MULTI-HARNESS RETROFIT ENGINE');
-  console.log('========================================================\n');
-  console.log(`📁 Repositório alvo: ${targetDir}`);
-
-  const meta = detectProjectMetadata(targetDir);
-  console.log(`📦 Projeto detectado: ${meta.name} (${meta.stack})`);
-  console.log(`🏢 Repositório: ${meta.owner}`);
-  console.log(`📝 Descrição: ${meta.desc}\n`);
-
-  if (options.dryRun) {
-    console.log('⚠️  MODO DRY-RUN ATIVADO: Nenhuma modificação será gravada em disco.\n');
-  }
-
-  // 1. Contratos Canônicos
-  console.log('📜 [1/7] Atualizando contratos canônicos...');
-  for (const contract of ['AGENTS.md', 'CLAUDE.md', 'GEMINI.md', 'RUNBOOK.md']) {
-    const src = path.join(STARTER_ROOT, contract);
-    const dest = path.join(targetDir, contract);
-    if (fs.existsSync(src)) {
-      if (options.dryRun) {
-        console.log(`  [DRY-RUN] Atualizar ${contract}`);
-      } else {
-        let content = fs.readFileSync(src, 'utf8')
-          .replaceAll('multi-harness-starter-pack', meta.name)
-          .replaceAll('<nome>', meta.name)
-          .replaceAll('<project-name>', meta.name)
-          .replaceAll('<owner/repo>', meta.owner)
-          .replaceAll('<stack>', meta.stack)
-          .replaceAll('<resultado esperado>', meta.desc);
-        fs.writeFileSync(dest, content, 'utf8');
-        console.log(`  ✅ ${contract} sincronizado.`);
-      }
-    }
-  }
-
-  // .github/copilot-instructions.md
-  const copilotSrc = path.join(STARTER_ROOT, '.github', 'copilot-instructions.md');
-  const copilotDest = path.join(targetDir, '.github', 'copilot-instructions.md');
-  if (fs.existsSync(copilotSrc)) {
-    if (!options.dryRun) {
-      fs.mkdirSync(path.dirname(copilotDest), { recursive: true });
-      fs.copyFileSync(copilotSrc, copilotDest);
-    }
-    console.log('  ✅ .github/copilot-instructions.md sincronizado.');
-  }
-
-  // NOTES.md
-  updateNotesFile(targetDir, meta, options.dryRun);
-
-  // 2. Guardrails Determinísticos e Hooks
-  console.log('\n🛡️  [2/7] Instalando guardrails determinísticos e hooks...');
-  const hooksSrc = path.join(STARTER_ROOT, '.claude', 'hooks');
-  const hooksDest = path.join(targetDir, '.claude', 'hooks');
-  copyDirRecursive(hooksSrc, hooksDest, options.dryRun);
-  if (!options.dryRun) {
-    try {
-      execSync(`chmod +x "${path.join(hooksDest, 'block-secrets.sh')}"`, { stdio: 'ignore' });
-    } catch {}
-  }
-  copyFileSafe(path.join(STARTER_ROOT, '.claude', 'settings.json'), path.join(targetDir, '.claude', 'settings.json'), options.dryRun);
-  console.log('  ✅ Hooks de bloqueio de segredos e settings.json instalados.');
-
-  // 3. Regras de Engenharia (rules/)
-  console.log('\n📐 [3/7] Sincronizando regras de engenharia (rules/)...');
-  copyDirRecursive(path.join(STARTER_ROOT, 'rules'), path.join(targetDir, 'rules'), options.dryRun);
-  copyDirRecursive(path.join(STARTER_ROOT, '.claude', 'rules'), path.join(targetDir, '.claude', 'rules'), options.dryRun);
-  console.log('  ✅ Regras de arquitetura, testes e segurança sincronizadas.');
-
-  // 4. Skills Corporativas & Symlinks Multi-Harness
-  console.log('\n🤖 [4/7] Sincronizando catálogo corporativo de skills...');
-  copyDirRecursive(path.join(STARTER_ROOT, '.claude', 'skills'), path.join(targetDir, '.claude', 'skills'), options.dryRun);
-  
-  // Cria symlinks em .agents/skills
-  const agentsSkillsDir = path.join(targetDir, '.agents', 'skills');
-  if (!options.dryRun) {
-    fs.mkdirSync(agentsSkillsDir, { recursive: true });
-    const claudeSkills = fs.readdirSync(path.join(targetDir, '.claude', 'skills'));
-    for (const skill of claudeSkills) {
-      const symlinkPath = path.join(agentsSkillsDir, skill);
-      const targetRel = `../../.claude/skills/${skill}`;
-      if (!fs.existsSync(symlinkPath)) {
-        try {
-          fs.symlinkSync(targetRel, symlinkPath);
-        } catch {}
-      }
-    }
-  }
-  console.log('  ✅ Skills espelhadas para Claude Code, Antigravity e Codex.');
-
-  // 5. Backlog.md & Telemetria
-  console.log('\n📋 [5/7] Provisionando padrão Backlog.md e scripts de telemetria...');
-  const backlogDir = path.join(targetDir, 'backlog');
-  const tasksDir = path.join(backlogDir, 'tasks');
-  if (!options.dryRun) {
-    fs.mkdirSync(tasksDir, { recursive: true });
-  }
-
-  // Copia config.yml e harness-models se não existirem
-  const cfgDest = path.join(backlogDir, 'config.yml');
-  if (!fs.existsSync(cfgDest)) {
-    copyFileSafe(path.join(STARTER_ROOT, 'backlog', 'config.yml'), cfgDest, options.dryRun);
-    console.log('  ✅ backlog/config.yml provisionado.');
-  }
-  const modelsDest = path.join(backlogDir, 'harness-models.json');
-  if (!fs.existsSync(modelsDest)) {
-    copyFileSafe(path.join(STARTER_ROOT, 'backlog', 'harness-models.json'), modelsDest, options.dryRun);
-  }
-
-  // Scripts de board e telemetria
-  const scriptsToCopy = [
-    'board-config.mjs',
-    'board-cards.mjs',
-    'build-board.mjs',
-    'worktree-pulse.mjs',
-    'worktree-pulse-daemon.sh',
-    'agent-pulse.mjs',
-    'audit-report.mjs',
+  const title = 'Remediar Red Flags do SafeCode Guardian';
+  const args = [
+    'task', 'create', title,
+    '-d', `Red Flags abertas: ${failed.join(', ')}. Detalhes em make audit-report. Falso positivo leva safecode-ignore com motivo, não reescrita de código.`,
+    '-l', 'security,safecode', '--priority', 'high', '--plain',
+    ...failed.flatMap((rf) => ['--ac', `${rf} fechada no make audit-gate`]),
   ];
-  for (const script of scriptsToCopy) {
-    const sSrc = path.join(STARTER_ROOT, 'scripts', script);
-    const sDest = path.join(targetDir, 'scripts', script);
-    if (fs.existsSync(sSrc)) {
-      copyFileSafe(sSrc, sDest, options.dryRun);
-    }
+  if (!hasBin('backlog') || !fs.existsSync(path.join(opts.targetDir, 'backlog', 'config.yml'))) {
+    report.warnings.push(`Crie a tarefa de remediação com: backlog ${args.map((a) => JSON.stringify(a)).join(' ')}`);
+    return;
   }
-  copyFileSafe(path.join(STARTER_ROOT, 'server.mjs'), path.join(targetDir, 'server.mjs'), options.dryRun);
-  updateVsCodeExtensions(targetDir, options.dryRun);
-  console.log('  ✅ Scripts de telemetria e extensão VS Code recomendada.');
-
-  // 6. Makefile Merge
-  console.log('\n⚙️  [6/7] Ajustando Makefile com alvos do starter pack...');
-  updateMakefile(targetDir, options.dryRun);
-
-  // 7. Auditoria SafeCode Guardian
-  console.log('\n🛡️  [7/7] Executando auditoria de conformidade SafeCode Guardian...');
-  const guardianScript = '/home/ubuntu/projetos/00-Guidelines/monitor/guardian.py';
-  if (!options.skipAudit && fs.existsSync(guardianScript)) {
-    try {
-      const auditOutput = execSync(`python3 ${guardianScript} --path "${targetDir}"`, {
-        encoding: 'utf8',
-      });
-      const parsed = JSON.parse(auditOutput.trim());
-      console.log(`\n========================================================`);
-      console.log(`🎯 Scorecard Atual: ${parsed.global_score}/100 | Grau: ${parsed.grade} | Achados: ${parsed.findings}`);
-      console.log(`========================================================`);
-
-      // Se houver Red Flags, cria a task de saneamento no Backlog.md
-      const failedRfs = Object.entries(parsed.red_flags || {}).filter(([_, v]) => v !== 'passed');
-      if (failedRfs.length > 0 && !options.dryRun) {
-        const remediationTaskPath = path.join(tasksDir, 'task-safecode-remediation - correcoes-de-segurança.md');
-        if (!fs.existsSync(remediationTaskPath)) {
-          const taskContent = `---
-id: task-safecode-remediation
-title: Correções de Segurança SafeCode Guardian
-status: To Do
-priority: high
-assignee:
-  - Security Lead
-labels:
-  - security
-  - safecode
-  - evertec
-order: a0
----
-
-## Description
-<!-- SECTION:DESCRIPTION:BEGIN -->
-Adequar o repositório para atingir Grau A (Score >= 90) no SafeCode Guardian.
-Red Flags pendentes de resolução:
-${failedRfs.map(([rf, status]) => `- **${rf}:** ${status}`).join('\n')}
-
-Execute \`make audit-report TARGET="${targetDir}"\` para ver arquivos e linhas específicos.
-<!-- SECTION:DESCRIPTION:END -->
-
-## Verify
-<!-- SECTION:VERIFY:BEGIN -->
-- [ ] Segredos hardcoded removidos e rotacionados (RF1)
-- [ ] Tratamento global de erros sem vazar stack traces (RF3)
-- [ ] Rate limiting implementado em rotas sensíveis (RF4)
-- [ ] \`make audit\` executando com score >= 90 e Grau A
-<!-- SECTION:VERIFY:END -->
-`;
-          fs.writeFileSync(remediationTaskPath, taskContent, 'utf8');
-          console.log(`  📌 Criada tarefa de adequação em: ${path.relative(targetDir, remediationTaskPath)}`);
-        }
-      }
-
-    } catch (err) {
-      console.warn('⚠️  Não foi possível executar a auditoria automática:', err.message);
-    }
-  }
-
-  console.log('\n========================================================');
-  console.log('✨ Retrofit concluído com sucesso!');
-  console.log(`\nPróximos passos para adequação no repositório:`);
-  console.log(`1. cd ${targetDir}`);
-  console.log(`2. make audit-report   # Ver lista de violações com linhas e trechos`);
-  console.log(`3. Corrija as Red Flags no código (segredos, stack traces, rate limiting)`);
-  console.log(`4. make audit          # Validar evolução até o Grau A`);
-  console.log(`5. make board-all      # Acompanhar pelo Kanban & Telemetria em tempo real`);
-  console.log('========================================================\n');
+  execFileSync('backlog', args, { cwd: opts.targetDir, stdio: 'ignore' });
+  report.created.push(`backlog: tarefa "${title}"`);
 }
 
-main().catch((err) => {
-  console.error('❌ Erro fatal durante o retrofit:', err);
-  process.exit(1);
-});
+// ---------------------------------------------------------------------------
+
+function printReport() {
+  const section = (icon, title, items) => {
+    if (!items.length) return;
+    console.log(`\n${icon} ${title} (${items.length}):`);
+    for (const item of items) console.log(`   - ${item}`);
+  };
+  section('➕', 'Criados', report.created);
+  section('📝', 'Atualizados', report.updated);
+  section('⏭️ ', 'Preservados (já existiam; use --emit-starter-copies para comparar)', report.preserved);
+  section('⚠️ ', 'Atenção', report.warnings);
+}
+
+export async function main(argv = process.argv.slice(2)) {
+  report = { created: [], preserved: [], updated: [], warnings: [] };
+  const options = parseArgs(argv);
+  if (!options.target) {
+    console.error('❌ Especifique o repositório alvo: node scripts/retrofit-project.mjs --target <caminho>');
+    return 1;
+  }
+  const targetDir = path.resolve(options.target);
+  if (!fs.existsSync(targetDir)) {
+    console.error(`❌ O diretório "${targetDir}" não existe.`);
+    return 1;
+  }
+  if (targetDir === STARTER_ROOT) {
+    console.error('❌ O alvo é o próprio starter pack.');
+    return 1;
+  }
+  const opts = { ...options, targetDir };
+  const meta = detectProjectMetadata(targetDir);
+
+  console.log('🛠️  FULLTECH MULTI-HARNESS RETROFIT ENGINE');
+  console.log(`📁 ${targetDir}  📦 ${meta.name} (${meta.stack})`);
+  if (opts.dryRun) console.log('⚠️  DRY-RUN: nada será gravado.');
+  if (opts.force) console.log('⚠️  --force: arquivos existentes diferentes serão sobrescritos.');
+
+  syncContracts(meta, opts);
+  copyDirNoClobber(path.join(STARTER_ROOT, '.claude', 'hooks'), path.join(targetDir, '.claude', 'hooks'), opts);
+  syncSettings(opts);
+  copyDirNoClobber(path.join(STARTER_ROOT, 'rules'), path.join(targetDir, 'rules'), opts);
+  copyDirNoClobber(path.join(STARTER_ROOT, '.claude', 'rules'), path.join(targetDir, '.claude', 'rules'), opts);
+  syncSkills(opts);
+  syncBacklog(meta, opts);
+  syncScripts(opts);
+  syncVsCodeExtensions(opts);
+  syncMakefile(opts);
+  if (!opts.dryRun) checkHookDependencies(opts);
+
+  if (!opts.skipAudit) {
+    const audit = runAudit(opts);
+    if (audit) {
+      console.log(`\n🎯 SafeCode Guardian: ${audit.global_score}/100, grau ${audit.grade}, ${audit.findings} achados`);
+      createRemediationTask(audit, opts);
+    }
+  }
+
+  printReport();
+  console.log('\nPróximos passos: git diff no alvo, make audit-report, make verify.');
+  return 0;
+}
+
+if (process.argv[1] && path.resolve(process.argv[1]) === __filename) {
+  main().then((code) => process.exit(code), (err) => {
+    console.error('❌ Erro fatal durante o retrofit:', err);
+    process.exit(1);
+  });
+}

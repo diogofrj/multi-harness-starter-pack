@@ -57,7 +57,7 @@ Execute `make help` no terminal para listar todos os comandos disponíveis:
 | Comando | O que faz | O que sobe / afeta |
 | :--- | :--- | :--- |
 | `make new-project` | Instancia um novo repositório limpo, substitui `<placeholders>`, inicializa git e roda auditoria inicial. | Cria pasta em `../<nome>` e valida nota A. |
-| `make retrofit` | Adequa um repositório existente (`TARGET=/caminho/repo`) aos contratos, guardrails, Backlog.md e Makefile do starter pack sem destruir histórico. | Atualiza contratos e injeta governança. |
+| `make retrofit` | Adequa um repositório existente (`TARGET=/caminho/repo`) aos contratos, guardrails, Backlog.md e Makefile do starter pack sem destruir histórico. | Preserva arquivos existentes; injeta bloco gerenciado, mescla hooks e acrescenta alvos ausentes. Rode antes com `--dry-run`. |
 | `make spec` | Exibe instruções para conduzir a entrevista de Spec-Driven Development via `/spec` ou `/plan`. | Apenas informativo no terminal. |
 | `make waves` | Exibe instruções para derivar o plano de ondas em `docs/plan/implementation-waves.md`. | Apenas informativo no terminal. |
 

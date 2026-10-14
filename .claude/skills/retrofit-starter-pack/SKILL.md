@@ -1,6 +1,6 @@
 ---
 name: retrofit-starter-pack
-description: Adequa e moderniza um repositório existente aos padrões do Multi-Harness Enterprise Starter Pack e SafeCode Guardian. Analisa a stack do projeto, injeta contratos canônicos (AGENTS.md, CLAUDE.md, GEMINI.md, RUNBOOK.md), guardrails determinísticos (block-secrets, settings), padrão Backlog.md, telemetria SSE, alvos do Makefile, roda auditoria de segurança e orienta as correções de código para atingir Grau A.
+description: Adequa um repositório existente aos padrões do Multi-Harness Enterprise Starter Pack e do SafeCode Guardian sem sobrescrever o que já existe. Injeta bloco gerenciado nos contratos, mescla settings e hooks, acrescenta alvos ausentes ao Makefile, provisiona Backlog.md pelo CLI, roda a auditoria e orienta a remediação (achado real no código, falso positivo com safecode-ignore e motivo).
 argument-hint: "[caminho-do-repositorio]"
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash
 ---
@@ -15,46 +15,42 @@ Use esta skill sempre que o usuário pedir para "adequar", "migrar", "adaptar", 
 - Se o usuário forneceu um caminho nos argumentos (`$ARGUMENTS`), resolva o caminho absoluto.
 - Caso contrário, pergunte o caminho do repositório ou verifique o diretório atual de trabalho.
 
-### Passo 2: Executar o Motor de Retrofit
-Execute o script no terminal do starter pack:
+### Passo 2: Pré-visualizar e executar o motor de retrofit
+O alvo precisa estar com a árvore git limpa, para o diff mostrar só o que o retrofit fez. Rode primeiro em modo de pré-visualização:
 ```bash
+node scripts/retrofit-project.mjs --target "<caminho-do-repositorio>" --dry-run --skip-audit
 node scripts/retrofit-project.mjs --target "<caminho-do-repositorio>"
 ```
-O script realizará de forma não-destrutiva:
-1. Inspeção automática da stack (Node/TypeScript, Python, Go, Rust), metadados e remote Git.
-2. Sincronização dos contratos canônicos (`AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, `RUNBOOK.md`) adaptados ao projeto.
-3. Preservação do histórico existente de `NOTES.md`, injetando o bloco de governança de ondas.
-4. Instalação de guardrails determinísticos (`.claude/hooks/block-secrets.sh` e `.claude/settings.json`).
-5. Provisionamento do padrão Backlog.md (`backlog/config.yml` e `backlog/tasks/`).
-6. Cópia dos motores locais de telemetria em tempo real e visualização de board.
-7. Merge inteligente no `Makefile` existente adicionando alvos (`audit`, `audit-report`, `verify`, `board`, `backlog-browser`, etc.).
-8. Execução da auditoria inicial do SafeCode Guardian e geração automática da tarefa de saneamento de segurança caso haja Red Flags.
+Garantias do motor, cobertas por `scripts/retrofit-project.test.mjs`:
+1. Arquivo que já existe no alvo nunca é sobrescrito. Ele aparece em "Preservados". Use `--emit-starter-copies` para gerar `<arquivo>.starter` e comparar. `--force` só com pedido explícito.
+2. `AGENTS.md` e `NOTES.md` existentes recebem só o bloco entre `<!-- fulltech-governance:start/end -->`, idempotente. `CLAUDE.md`, `GEMINI.md` e `RUNBOOK.md` existentes ficam intactos. Quando ausentes, nascem do template com a stack detectada; o que não for detectado vira `[CUSTOMIZE]`.
+3. `.claude/settings.json` é mesclado: hooks do starter entram por união, deny de leitura de segredo entra, o resto vira sugestão no relatório.
+4. Makefile recebe só os alvos e variáveis ausentes. `verify` roda `ci` (ou `test`) e `audit-gate`, que falha com Red Flag aberta.
+5. Backlog.md pelo CLI `backlog` (`backlog init`, `backlog task create`); nada escrito à mão em `backlog/`.
+6. Todo hook instalado tem os scripts de que depende; faltando, sai em "Atenção".
 
-### Passo 3: Avaliar o Diagnóstico de Segurança
-Execute:
+Depois de rodar, revise `git diff` e `git status` no alvo e trate cada item de "Atenção".
+
+### Passo 3: Avaliar o diagnóstico de segurança
 ```bash
 make audit-report TARGET="<caminho-do-repositorio>"
 ```
-Identifique:
-- **Red Flags Bloqueantes:**
-  - **RF1 (Segredos):** Chaves, senhas de banco ou tokens expostos em código/testes.
-  - **RF2 (Validação Client):** Falta de validação estrita no backend.
-  - **RF3 (Erros/Stack Traces):** Exposição de stack traces brutas em respostas de erro.
-  - **RF4 (Rate Limiting):** Ausência de controle de vazão em endpoints e interfaces RPC.
-- **Score Global e Grau (A a F):** Meta mandatória é Grau A (Score ≥ 90).
+Red Flags bloqueantes:
+- **RF1 (Segredos):** chaves, senhas de banco ou tokens literais.
+- **RF2 (Validação Client):** falta de validação estrita no backend.
+- **RF3 (Erros/Stack Traces):** stack trace ou credencial em resposta ou log.
+- **RF4 (Rate Limiting):** sem controle de vazão no app nem na borda (Traefik, nginx, ingress).
 
-### Passo 4: Conduzir a Remediação no Código
-Com base no relatório gerado:
-1. Abra os arquivos apontados no relatório.
-2. Aplique as correções sugeridas (ex: extrair senhas de testes para variáveis de ambiente, adicionar try/catch com mensagens genéricas no backend, configurar middleware de rate limiting).
-3. Execute os testes da aplicação (`make test` ou o runner nativo) para assegurar que nada quebrou.
+Para cada achado, decida se é real ou falso positivo lendo o código, não o título da regra.
 
-### Passo 5: Re-auditar e Comprovar a Conformidade
-1. Re-execute a auditoria:
-   ```bash
-   make audit TARGET="<caminho-do-repositorio>"
-   make audit-report TARGET="<caminho-do-repositorio>"
-   ```
-2. Confirme que todas as Red Flags estão marcadas como **PASSOU (OK)** e o Score Global atingiu **Grau A**.
-3. Convide o usuário a verificar o painel visual com os snippets de código e evidências em:
-   👉 **`http://localhost:8765/#safecode`**
+### Passo 4: Remediar
+1. Achado real: corrija no código e rode os testes do projeto.
+2. Falso positivo: `safecode-ignore <REGRA>: <motivo>` na linha (ou na de cima), ou `safecode-ignore-file <REGRA>: <motivo>` nas 10 primeiras linhas do arquivo. Motivo obrigatório.
+3. Nunca reescreva código correto só para calar o scanner. Se a regra do scanner estiver errada, corrija o scanner em `~/projetos/00-Guidelines/monitor` com teste.
+4. O que exigir mudança de produto vira card via `backlog task create`.
+
+### Passo 5: Comprovar
+```bash
+make verify
+```
+Só conta como concluído com `verify` saindo 0, o que exige o gate do projeto verde e todas as Red Flags fechadas. Painel: `http://localhost:8765/#safecode`.

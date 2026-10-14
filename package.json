@@ -12,6 +12,7 @@
     "pulse": "node scripts/agent-pulse.mjs",
     "audit": "python3 /home/ubuntu/projetos/00-Guidelines/monitor/guardian.py --path .",
     "verify": "make verify",
-    "new-project": "node scripts/init-project.mjs"
+    "new-project": "node scripts/init-project.mjs",
+    "test": "node --test 'scripts/*.test.mjs'"
   }
 }
