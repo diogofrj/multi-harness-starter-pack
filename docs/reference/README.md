@@ -14,6 +14,8 @@ its scope. No tutorials, no opinions, no narrative.
 
 ## Index
 
+- [`performance-checklist.md`](performance-checklist.md) — 31-item performance audit checklist (frontend, network, API, backend, database, measurement)
+
 [CUSTOMIZE] List reference pages as you add them, e.g.:
 
 - `cli.md` — CLI commands and flags

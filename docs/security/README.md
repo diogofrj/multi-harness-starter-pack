@@ -25,5 +25,4 @@ process. Save the output here as `docs/security/threats/<feature>.md`.
 
 ## See also
 
-- [`SECURITY.md`](../../SECURITY.md) — vulnerability disclosure policy
-- [`.claude/rules/security.md`](../../.claude/rules/security.md) — security rules Claude must follow
+- [`rules/security.md`](../../rules/security.md) — security rules Claude must follow

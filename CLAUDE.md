@@ -18,7 +18,7 @@ make dev              # Inicia o servidor local de desenvolvimento
 make lint             # Roda linters (falha se não configurado)
 make typecheck        # Checagem de tipagem estrita
 make test             # Executa suíte de testes unitários e integração
-make audit            # Executa SafeCode Guardian (Evertec 13, OWASP, SDD Scorecard)
+make audit            # Executa SafeCode Guardian (13 regras de segurança, OWASP, SDD Scorecard)
 make verify           # Verificação end-to-end com evidências (test + lint + audit)
 make board            # Inicia o Kanban Fulltech em tempo real SSE (http://localhost:3100)
 make backlog-browser  # Inicia o Backlog.md Browser oficial (http://localhost:6420)

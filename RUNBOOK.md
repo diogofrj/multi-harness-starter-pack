@@ -22,7 +22,7 @@ O **Multi-Harness Enterprise Starter Pack** transforma o uso de assistentes de I
 - **Engenharia Rigorosa:** Nenhuma feature sem spec (`/spec`), código em fatias verticais DDD (`/vertical-slice`), contratos API-First e ADRs formato Nygard.
 - **Continuidade Lossless:** O contexto nunca se perde no `/compact` graças aos hooks de snapshot e restauração automática.
 - **Telemetria Local:** Um Kanban Board em tempo real via SSE mostra os agentes em execução e o roadmap de waves.
-- **Conformidade Corporativa:** Auditoria nativa com o **SafeCode Guardian** (13 diretrizes Evertec, OWASP e SDD) via `make audit`.
+- **Conformidade Corporativa:** Auditoria nativa com o **SafeCode Guardian** (13 regras de segurança em `rules/security.md`, OWASP e SDD) via `make audit`.
 - **Scaffolding Inteligente:** Crie novos projetos customizados em segundos via `make new-project` sem copiar e colar pastas.
 
 ---
@@ -38,7 +38,7 @@ O **Multi-Harness Enterprise Starter Pack** transforma o uso de assistentes de I
 | **[`NOTES.md`](NOTES.md)** | **Memória Viva** | Documento de continuidade entre sessões: status atual, roadmap de ondas e hand-off. |
 | **[`rules/`](rules/)** | Regras de Engenharia | Padrões de testes (TDD), estilo de código, git workflow, segurança e criação de agentes (symlinkadas em `.claude/rules/`). |
 | **[`docs/`](docs/)** | **Documentação Diátaxis** | Estrutura organizada em `tutorials/`, `how-to/` (loops), `explanation/`, `reference/`, `adr/` (ADRs Nygard), `api/` (OpenAPI/AsyncAPI) e `specs/`. |
-| **[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)** | Arquitetura & Ameaças | Modelo de fronteiras de confiança, segurança de rede e conformidade Evertec. |
+| **[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)** | Arquitetura & Ameaças | Modelo de fronteiras de confiança, segurança de rede e modelo de ameaças. |
 | **[`.claude/hooks/`](.claude/hooks/)** | Guardrails Automáticos | Hooks determinísticos: bloqueio de segredos, proteção bash, compactação lossless e telemetria de agentes. |
 | **[`.claude/skills/`](.claude/skills/)** | Skills Especializadas | Ferramentas invocáveis como comandos (`/spec`, `/waves`, `/vertical-slice`, `/verify`, `/init-project`, etc.). |
 | **[`.agents/skills/`](.agents/skills/)** | Symlinks Multi-Harness | Espelhamento automático de todas as skills para Codex e Antigravity. |
@@ -74,7 +74,7 @@ Execute `make help` no terminal para listar todos os comandos disponíveis:
 ### C. Segurança & Auditoria Corporativa
 | Comando | O que faz | O que sobe / afeta |
 | :--- | :--- | :--- |
-| `make audit` | Executa o motor **SafeCode Guardian** no repositório atual ou externo (`TARGET=/caminho/repo`): valida 13 regras Evertec, OWASP Top 10, LLM/MCP e SDD. | Gera scorecard JSON com nota (A a F) e Red Flags. |
+| `make audit` | Executa o motor **SafeCode Guardian** no repositório atual ou externo (`TARGET=/caminho/repo`): valida as 13 regras de segurança, OWASP Top 10, LLM/MCP e SDD. | Gera scorecard JSON com nota (A a F) e Red Flags. |
 | `make audit-report` | Exibe o relatório detalhado de auditoria no terminal (Red Flags, violações com arquivo:linha, snippets de código, remediações e links oficiais). | Diagnóstico imediato no terminal. |
 | `make verify` | Verificação completa end-to-end antes de fechar uma entrega: executa os gates de qualidade e a auditoria do SafeCode Guardian com evidências. | Evidência de conclusão para o hand-off. |
 

@@ -9,7 +9,7 @@ Documentation is structured around four purposes ([Diátaxis](https://diataxis.f
 | [`reference/`](reference/)           | Looking up information | CLI flags, config schema, API codes |
 | [`explanation/`](explanation/)       | Understanding context  | Why we built it this way            |
 
-Plus three special directories that don't belong to Diátaxis but live here:
+Plus these special directories that don't belong to Diátaxis but live here:
 
 - [`specs/`](specs/) — Spec-Driven Development feature specs
 - [`adr/`](adr/) — Architecture Decision Records
@@ -24,6 +24,7 @@ Plus three special directories that don't belong to Diátaxis but live here:
 - "How do I rotate the JWT signing key?" → `how-to/`
 - "Build a feature step-by-step from nothing" → `tutorials/`
 - "What does error code `validation_failed` mean?" → `reference/`
+- "What should I check to make the app faster?" → [`reference/performance-checklist.md`](reference/performance-checklist.md)
 - "What are we even building here, what are the contracts?" → `specs/`
 - "Why did we pick Postgres over DynamoDB?" → `adr/`
 - "What attacks did we consider for the payments slice?" → `security/threats/`

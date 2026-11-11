@@ -273,7 +273,7 @@ Configurar contratos base, documentar \`SPEC.md\` via Spec-Driven Development, c
       const parsed = JSON.parse(auditOutput.trim());
       console.log(`🎯 Scorecard Inicial: ${parsed.global_score}/100 | Grau: ${parsed.grade} | Achados: ${parsed.findings}`);
       if (parsed.grade === 'A') {
-        console.log('✨ Projeto 100% compliant com as diretrizes Evertec, OWASP e SDD!');
+        console.log('✨ Projeto 100% compliant com as regras de segurança, OWASP e SDD!');
       }
     } catch (e) {
       console.warn('⚠️  Aviso: Auditoria do SafeCode Guardian não pôde ser completada:', e.message);

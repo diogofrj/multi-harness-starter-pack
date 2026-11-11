@@ -12,7 +12,7 @@ Este é o documento de autoridade comum para todos os harnesses usados no projet
 - **API-First:** Contratos de API (`docs/api/openapi.yaml` e `asyncapi.yaml`) devem ser definidos antes do código de implementação.
 - **Decisões Arquiteturais em ADRs:** Decisões significativas devem ser registradas em `docs/adr/` no formato Nygard (Status, Contexto, Decisão, Consequências).
 - **Documentação Diátaxis:** A documentação segue estritamente a taxonomia Diátaxis em `docs/` (`tutorials/`, `how-to/`, `explanation/`, `reference/`).
-- **Segurança desde o Início (Security by Design):** Modelagem de ameaças e cumprimento estrito das 13 diretrizes corporativas da Evertec de desenvolvimento seguro com IA.
+- **Segurança desde o Início (Security by Design):** Modelagem de ameaças e cumprimento estrito das 13 regras de desenvolvimento seguro com IA em [`rules/security.md`](rules/security.md).
 
 ### Pilar 2: Memória Viva & Continuidade Lossless
 - `NOTES.md` é a memória de trabalho contínua do repositório. Deve ser lido no início de cada turno e atualizado ao concluir tarefas ou waves.
@@ -41,7 +41,7 @@ Este é o documento de autoridade comum para todos os harnesses usados no projet
 ### Pilar 5: Loops Supervisionados & Evidência Real
 - **Evidência, Não Opinião:** Nunca declare sucesso ou conclusão sem executar ferramentas reais que comprovem o resultado (testes passando, exit code 0, resposta HTTP esperada).
 - **Metas Verificáveis com Teto de Tentativas:** Toda execução em loop ou meta (`/goal`) exige uma condição de parada computacional e um teto seguro de iterações (`stop after N tries`).
-- **Auditoria Contínua com SafeCode Guardian:** O comando `make audit` executa a checagem das 13 regras Evertec, OWASP Top 10, OWASP LLM & MCP e conformidade SDD, gerando notas de A a F e controle de Red Flags.
+- **Auditoria Contínua com SafeCode Guardian:** O comando `make audit` executa a checagem das 13 regras de segurança (`rules/security.md`), OWASP Top 10, OWASP LLM & MCP e conformidade SDD, gerando notas de A a F e controle de Red Flags.
 
 ---
 
@@ -110,7 +110,7 @@ A integração com Fulltech Memory é um acelerador opcional. Consulte `docs/ful
 
 A baseline canônica fica em `~/projetos/00-Guidelines/baseline/CATALOGO.md` (versão fixada em `baseline/VERSION`); procedimentos em `baseline/ADOTAR.md` e `baseline/VERIFICACAO.md`. Não replique nem edite a baseline dentro deste projeto.
 
-- **Auditoria Local Instantânea:** Execute `make audit` para avaliar a aderência imediata deste repositório ao SafeCode Guardian (13 regras Evertec, OWASP Top 10, OWASP LLM & MCP, Scorecard de Arquitetura SDD).
+- **Auditoria Local Instantânea:** Execute `make audit` para avaliar a aderência imediata deste repositório ao SafeCode Guardian (13 regras de segurança, OWASP Top 10, OWASP LLM & MCP, Scorecard de Arquitetura SDD).
 - **Gatilho manual:** Quando o usuário disser **“sincronizar aderência com o Guardião”** (ou **“atualizar conformidade do Guardião”**), carregue a skill global `guardian-sync`, faça o de-para completo dos controles da versão fixada contra este projeto e atualize o painel central.
 - Mantenha `docs/compliance/guardiao-baseline.md` como de-para legível deste projeto: versão da baseline, revisão avaliada, data, revisor e tabela dos controles com status, justificativa e caminhos de evidência.
 - Atualize `~/projetos/00-Guidelines/monitor/assessments/<nome-exato-da-pasta-do-projeto>.json` que alimenta o portal do Guardião em `http://localhost:8765/#safecode`.

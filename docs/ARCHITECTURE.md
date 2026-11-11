@@ -27,7 +27,10 @@ graph TD
 3. **Fronteira de Telemetria:** O board local (`server.mjs`) expõe eventos SSE efêmeros em `127.0.0.1` e não transmite código para a internet.
 4. **Fronteira de Memória Persistente:** A integração opcional com o Fulltech Memory MCP armazena apenas decisões duráveis e arquiteturais, sem logs brutos ou segredos.
 
-## Modelo de Ameaças & Diretrizes Evertec
+## Modelo de Ameaças & Regras de Segurança
+
+Regras completas em [`rules/security.md`](../rules/security.md); resumo dos controles de arquitetura:
+
 - **Injeção de Código e SQLi:** Todas as operações com banco devem utilizar consultas parametrizadas (Prepared Statements).
 - **Validação no Backend:** Toda entrada de usuário ou cliente externo é tratada como não confiável e validada no backend via esquemas estritos (Pydantic, Zod, etc.).
 - **Rate Limiting e CORS:** APIs expostas implementam limites de requisição e políticas restritivas de origem.

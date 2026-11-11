@@ -282,7 +282,7 @@ const NOTES_BLOCK = `
 ## Governança Multi-Harness & SafeCode Guardian
 - **Contrato Canônico:** [AGENTS.md](AGENTS.md) adotado como fonte de autoridade comum.
 - **Regra de Ouro:** \`1 Tarefa = 1 Branch (feat/task-X-...) = 1 Worktree = 1 PR = 1 Contexto\`.
-- **Auditoria de Segurança:** \`make audit\` (Evertec 13, OWASP Top 10, SDD); \`make verify\` = gate do projeto + Red Flags.
+- **Auditoria de Segurança:** \`make audit\` (13 regras de segurança, OWASP Top 10, SDD); \`make verify\` = gate do projeto + Red Flags.
 - **Kanban & Backlog:** Backlog.md via CLI \`backlog\` (\`make board\`, \`make backlog-browser\`).
 `;
 
