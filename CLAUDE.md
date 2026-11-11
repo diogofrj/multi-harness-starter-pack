@@ -18,7 +18,7 @@ make dev              # Inicia o servidor local de desenvolvimento
 make lint             # Roda linters (falha se não configurado)
 make typecheck        # Checagem de tipagem estrita
 make test             # Executa suíte de testes unitários e integração
-make audit            # Executa SafeCode Guardian (13 regras de segurança, OWASP, SDD Scorecard)
+make audit            # Segredos (gitleaks) + auditoria de dependências da stack
 make verify           # Verificação end-to-end com evidências (test + lint + audit)
 make board            # Inicia o Kanban Fulltech em tempo real SSE (http://localhost:3100)
 make backlog-browser  # Inicia o Backlog.md Browser oficial (http://localhost:6420)
@@ -41,7 +41,7 @@ Não trate fallback silencioso ou comando ausente como check verde. Evidência, 
 - `/babysit-pr <pr-number>`: Monitora CI e comentários de revisão no GitHub.
 - `/fix-issue <issue>`: Reprodução e depuração sistemática de bugs.
 - `/commit`: Criação de commits no padrão Conventional Commits com escopo.
-- `/security-check`: Auditoria de segurança corporativa via SafeCode Guardian.
+- `/security-check`: Auditoria de segurança guiada por `rules/security.md` e OWASP.
 
 ## Operação e Continuidade
 

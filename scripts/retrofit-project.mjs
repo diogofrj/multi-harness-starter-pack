@@ -11,7 +11,7 @@
  *   - tarefas do Backlog.md são criadas pelo CLI `backlog`, nunca escritas à mão.
  *
  * Uso:
- *   node scripts/retrofit-project.mjs --target /caminho/do/projeto [--dry-run] [--skip-audit]
+ *   node scripts/retrofit-project.mjs --target /caminho/do/projeto [--dry-run]
  *                                     [--force] [--emit-starter-copies]
  */
 
@@ -22,7 +22,6 @@ import { fileURLToPath } from 'node:url';
 
 const __filename = fileURLToPath(import.meta.url);
 const STARTER_ROOT = path.resolve(path.dirname(__filename), '..');
-const GUARDIAN_SCRIPT = process.env.SAFECODE_GUARDIAN || '/home/ubuntu/projetos/00-Guidelines/monitor/guardian.py';
 const MARKER_START = '<!-- fulltech-governance:start -->';
 const MARKER_END = '<!-- fulltech-governance:end -->';
 const CUSTOMIZE = '[CUSTOMIZE]';
@@ -36,11 +35,9 @@ const SCRIPTS_TO_COPY = [
   'worktree-pulse-daemon.sh',
   'agent-pulse.mjs',
   'agent-pulse-hook.sh',
-  'audit-report.mjs',
-  'audit-gate.mjs',
 ];
 const GOVERNANCE_TARGETS = [
-  'audit', 'audit-report', 'audit-gate', 'verify',
+  'audit', 'verify',
   'board', 'backlog-browser', 'board-all', 'board-status', 'board-stop',
 ];
 const GOVERNANCE_VARS = ['BOARD_DEFAULT_PORT', 'BOARD_PORT_VALUE', 'BACKLOG_PORT', 'TARGET'];
@@ -48,12 +45,11 @@ const GOVERNANCE_VARS = ['BOARD_DEFAULT_PORT', 'BOARD_PORT_VALUE', 'BACKLOG_PORT
 let report;
 
 function parseArgs(argv) {
-  const options = { target: '', dryRun: false, skipAudit: false, force: false, emitStarterCopies: false };
+  const options = { target: '', dryRun: false, force: false, emitStarterCopies: false };
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     if (arg === '--target' && argv[i + 1]) options.target = argv[++i];
     else if (arg === '--dry-run') options.dryRun = true;
-    else if (arg === '--skip-audit') options.skipAudit = true;
     else if (arg === '--force') options.force = true;
     else if (arg === '--emit-starter-copies') options.emitStarterCopies = true;
     else if (!options.target && !arg.startsWith('--')) options.target = arg;
@@ -272,17 +268,17 @@ function upsertManagedBlock(file, body, position, opts) {
 const AGENTS_BLOCK = `
 ## Governança Fulltech (starter pack)
 - Skills do starter pack em \`.claude/skills/\`, espelhadas em \`.agents/skills/\` para os outros harnesses.
-- Segurança: \`make audit\` e \`make audit-report\` (SafeCode Guardian); \`make audit-gate\` falha com Red Flag aberta.
-- \`make verify\` roda o gate do projeto (\`ci\` se existir, senão \`test\`) e o \`audit-gate\`. Verde só com os dois executados.
-- Falso positivo do scanner: \`safecode-ignore <REGRA>: <motivo>\` na linha, ou \`safecode-ignore-file <REGRA>: <motivo>\` no topo do arquivo. Nunca reescrever código só para calar o scanner.
+- Segurança: regras em \`rules/security.md\`; \`make audit\` roda gitleaks e a auditoria de dependências da stack.
+- \`make verify\` roda o gate do projeto (\`ci\` se existir, senão \`test\`) e o \`audit\`. Verde só com os dois executados.
+- Falso positivo do scanner: registrar a exceção no arquivo de configuração da ferramenta (ex.: \`.gitleaksignore\`) com motivo. Nunca reescrever código só para calar o scanner.
 - Backlog.md sempre pelo CLI \`backlog\`; board em \`make board\` e \`make backlog-browser\`.
 `;
 
 const NOTES_BLOCK = `
-## Governança Multi-Harness & SafeCode Guardian
+## Governança Multi-Harness
 - **Contrato Canônico:** [AGENTS.md](AGENTS.md) adotado como fonte de autoridade comum.
 - **Regra de Ouro:** \`1 Tarefa = 1 Branch (feat/task-X-...) = 1 Worktree = 1 PR = 1 Contexto\`.
-- **Auditoria de Segurança:** \`make audit\` (13 regras de segurança, OWASP Top 10, SDD); \`make verify\` = gate do projeto + Red Flags.
+- **Segurança:** regras em \`rules/security.md\`; \`make verify\` = gate do projeto + \`make audit\` (gitleaks + dependências).
 - **Kanban & Backlog:** Backlog.md via CLI \`backlog\` (\`make board\`, \`make backlog-browser\`).
 `;
 
@@ -455,7 +451,7 @@ export function buildMakefileAddition(existing, starterMakefile) {
   const text = [
     '',
     '# ==============================================================================',
-    '# Fulltech Multi-Harness Governance & SafeCode Guardian Targets',
+    '# Fulltech Multi-Harness Governance Targets',
     '# ==============================================================================',
     `.PHONY: ${targets.join(' ')}`,
     '',
@@ -521,6 +517,7 @@ function syncScripts(opts) {
     if (fs.existsSync(src)) copyNoClobber(src, path.join(opts.targetDir, 'scripts', script), opts);
   }
   copyNoClobber(path.join(STARTER_ROOT, 'server.mjs'), path.join(opts.targetDir, 'server.mjs'), opts);
+  copyNoClobber(path.join(STARTER_ROOT, 'mise.toml'), path.join(opts.targetDir, 'mise.toml'), opts);
 }
 
 function syncVsCodeExtensions(opts) {
@@ -540,53 +537,6 @@ function syncVsCodeExtensions(opts) {
   data.recommendations.push(targetExt);
   report.updated.push('.vscode/extensions.json');
   if (!opts.dryRun) fs.writeFileSync(extFile, `${JSON.stringify(data, null, 2)}\n`, 'utf8');
-}
-
-// ---------------------------------------------------------------------------
-// Auditoria e tarefa de remediação
-// ---------------------------------------------------------------------------
-
-function runAudit(opts) {
-  if (!fs.existsSync(GUARDIAN_SCRIPT)) {
-    report.warnings.push(`SafeCode Guardian não encontrado em ${GUARDIAN_SCRIPT}; auditoria pulada.`);
-    return null;
-  }
-  try {
-    const output = execFileSync('python3', [GUARDIAN_SCRIPT, '--path', opts.targetDir], { encoding: 'utf8' });
-    return JSON.parse(output.trim().split('\n').pop());
-  } catch (err) {
-    report.warnings.push(`Auditoria automática falhou: ${err.message}`);
-    return null;
-  }
-}
-
-function remediationTaskExists(targetDir) {
-  const tasksDir = path.join(targetDir, 'backlog', 'tasks');
-  if (!fs.existsSync(tasksDir)) return false;
-  return fs.readdirSync(tasksDir).some((file) => file.endsWith('.md')
-    && /^title:.*SafeCode Guardian/m.test(fs.readFileSync(path.join(tasksDir, file), 'utf8')));
-}
-
-function createRemediationTask(audit, opts) {
-  const failed = Object.entries(audit.red_flags || {}).filter(([, status]) => status !== 'passed').map(([rf]) => rf);
-  if (failed.length === 0 || opts.dryRun) return;
-  if (remediationTaskExists(opts.targetDir)) {
-    console.log('  ✅ Tarefa de remediação do SafeCode Guardian já existe no backlog.');
-    return;
-  }
-  const title = 'Remediar Red Flags do SafeCode Guardian';
-  const args = [
-    'task', 'create', title,
-    '-d', `Red Flags abertas: ${failed.join(', ')}. Detalhes em make audit-report. Falso positivo leva safecode-ignore com motivo, não reescrita de código.`,
-    '-l', 'security,safecode', '--priority', 'high', '--plain',
-    ...failed.flatMap((rf) => ['--ac', `${rf} fechada no make audit-gate`]),
-  ];
-  if (!hasBin('backlog') || !fs.existsSync(path.join(opts.targetDir, 'backlog', 'config.yml'))) {
-    report.warnings.push(`Crie a tarefa de remediação com: backlog ${args.map((a) => JSON.stringify(a)).join(' ')}`);
-    return;
-  }
-  execFileSync('backlog', args, { cwd: opts.targetDir, stdio: 'ignore' });
-  report.created.push(`backlog: tarefa "${title}"`);
 }
 
 // ---------------------------------------------------------------------------
@@ -639,16 +589,8 @@ export async function main(argv = process.argv.slice(2)) {
   syncMakefile(opts);
   if (!opts.dryRun) checkHookDependencies(opts);
 
-  if (!opts.skipAudit) {
-    const audit = runAudit(opts);
-    if (audit) {
-      console.log(`\n🎯 SafeCode Guardian: ${audit.global_score}/100, grau ${audit.grade}, ${audit.findings} achados`);
-      createRemediationTask(audit, opts);
-    }
-  }
-
   printReport();
-  console.log('\nPróximos passos: git diff no alvo, make audit-report, make verify.');
+  console.log('\nPróximos passos: git diff no alvo, make verify.');
   return 0;
 }
 

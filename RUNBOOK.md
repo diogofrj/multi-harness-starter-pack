@@ -22,7 +22,7 @@ O **Multi-Harness Enterprise Starter Pack** transforma o uso de assistentes de I
 - **Engenharia Rigorosa:** Nenhuma feature sem spec (`/spec`), código em fatias verticais DDD (`/vertical-slice`), contratos API-First e ADRs formato Nygard.
 - **Continuidade Lossless:** O contexto nunca se perde no `/compact` graças aos hooks de snapshot e restauração automática.
 - **Telemetria Local:** Um Kanban Board em tempo real via SSE mostra os agentes em execução e o roadmap de waves.
-- **Conformidade Corporativa:** Auditoria nativa com o **SafeCode Guardian** (13 regras de segurança em `rules/security.md`, OWASP e SDD) via `make audit`.
+- **Segurança por Padrão:** 13 regras de desenvolvimento seguro com IA em `rules/security.md` e `make audit` com ferramentas abertas (gitleaks + auditoria de dependências).
 - **Scaffolding Inteligente:** Crie novos projetos customizados em segundos via `make new-project` sem copiar e colar pastas.
 
 ---
@@ -56,7 +56,7 @@ Execute `make help` no terminal para listar todos os comandos disponíveis:
 ### A. Scaffolding & Gestão de Projetos
 | Comando | O que faz | O que sobe / afeta |
 | :--- | :--- | :--- |
-| `make new-project` | Instancia um novo repositório limpo, substitui `<placeholders>`, inicializa git e roda auditoria inicial. | Cria pasta em `../<nome>` e valida nota A. |
+| `make new-project` | Instancia um novo repositório limpo, substitui `<placeholders>`, inicializa git e cria o card da Wave 0. | Cria pasta em `../<nome>`. |
 | `make retrofit` | Adequa um repositório existente (`TARGET=/caminho/repo`) aos contratos, guardrails, Backlog.md e Makefile do starter pack sem destruir histórico. | Preserva arquivos existentes; injeta bloco gerenciado, mescla hooks e acrescenta alvos ausentes. Rode antes com `--dry-run`. |
 | `make spec` | Exibe instruções para conduzir a entrevista de Spec-Driven Development via `/spec` ou `/plan`. | Apenas informativo no terminal. |
 | `make waves` | Exibe instruções para derivar o plano de ondas em `docs/plan/implementation-waves.md`. | Apenas informativo no terminal. |
@@ -71,12 +71,11 @@ Execute `make help` no terminal para listar todos os comandos disponíveis:
 | `make test` | Roda a suíte de testes unitários e de integração (`vitest`, `jest`, `pytest`). | Executa testes automatizados. |
 | `make test-watch` | Executa os testes em modo watch contínuo durante o desenvolvimento. | Observador de arquivos de teste. |
 
-### C. Segurança & Auditoria Corporativa
+### C. Segurança & Auditoria
 | Comando | O que faz | O que sobe / afeta |
 | :--- | :--- | :--- |
-| `make audit` | Executa o motor **SafeCode Guardian** no repositório atual ou externo (`TARGET=/caminho/repo`): valida as 13 regras de segurança, OWASP Top 10, LLM/MCP e SDD. | Gera scorecard JSON com nota (A a F) e Red Flags. |
-| `make audit-report` | Exibe o relatório detalhado de auditoria no terminal (Red Flags, violações com arquivo:linha, snippets de código, remediações e links oficiais). | Diagnóstico imediato no terminal. |
-| `make verify` | Verificação completa end-to-end antes de fechar uma entrega: executa os gates de qualidade e a auditoria do SafeCode Guardian com evidências. | Evidência de conclusão para o hand-off. |
+| `make audit` | Roda `gitleaks` (segredos) e a auditoria de dependências da stack (`npm audit`, `pnpm audit`, `pip-audit`) no repositório atual ou externo (`TARGET=/caminho/repo`). Ferramenta ausente sai com código 2. | Falha com achado de segredo ou CVE alta/crítica. |
+| `make verify` | Verificação completa end-to-end antes de fechar uma entrega: executa o gate do projeto (`ci` ou `test`) e o `make audit`. | Evidência de conclusão para o hand-off. |
 
 ### D. Kanban, Backlog & Telemetria em Tempo Real
 | Comando | O que faz | O que sobe / afeta |
@@ -107,11 +106,11 @@ Todas as skills ficam disponíveis para **Claude Code** (`/comando`), **Antigrav
 - **`/vertical-slice <feature>`**: Cria o scaffold de uma fatia vertical completa em DDD (`domain`, `application`, `infrastructure`, `presentation`) para qualquer linguagem (Python, TypeScript, Go, Rust).
 - **`/verify`**: Valida a entrega executando gates estáticos e comportamentais antes de reportar conclusão.
 - **`/init-project`**: Assistente de scaffolding para inicializar novos projetos a partir deste repositório.
-- **`/retrofit-starter-pack [caminho]`**: Adequa e moderniza repositórios legados existentes aos padrões do starter pack e SafeCode Guardian.
+- **`/retrofit-starter-pack [caminho]`**: Adequa e moderniza repositórios legados existentes aos padrões do starter pack.
 - **`/ux-designer`**: Acervo com **22 manuais de boas práticas de UX/UI** (design systems, acessibilidade, formulários, tabelas, canvas, AI UX, mobile).
 - **`/babysit-pr <pr>`**: Monitora CI e comentários de revisão no GitHub, aplicando correções automaticamente.
 - **`/fix-issue <issue>`**: Fluxo sistemático de depuração com reprodução obrigatória antes de qualquer correção.
-- **`/security-check`**: Auditoria de segurança corporativa Security by Design integrada com o SafeCode Guardian.
+- **`/security-check`**: Auditoria de segurança Security by Design guiada pelas regras de `rules/security.md` e OWASP.
 - **`/commit`**: Geração de commits estruturados no padrão Conventional Commits com escopo.
 - **`/readme-format`**: Padronização da documentação de READMEs no estilo corporativo da Fulltech.
 
@@ -129,10 +128,10 @@ make install
 ### Adequar Repositório Existente (Retrofit)
 ```bash
 # Executa a adequação automática sem destruir o código ou histórico
-make retrofit TARGET=/home/ubuntu/projetos/_Fulltech/fulltech-memory
+make retrofit TARGET=../meu-repo-legado
 
 # Ou via comando/skill no chat:
-/retrofit-starter-pack /home/ubuntu/projetos/_Fulltech/fulltech-memory
+/retrofit-starter-pack ../meu-repo-legado
 ```
 
 ### Iniciar uma Nova Funcionalidade (Wave)
@@ -150,19 +149,17 @@ make retrofit TARGET=/home/ubuntu/projetos/_Fulltech/fulltech-memory
    ```
 7. Atualize o `NOTES.md` com as evidências e o status ✅.
 
-### Auditar a Segurança com o SafeCode Guardian
-- **Auditar o próprio projeto:**
+### Auditar a Segurança
+- **Instalar as ferramentas (versão fixada em `mise.toml`):**
+  ```bash
+  mise install
+  ```
+- **Auditar o próprio projeto ou um repositório externo:**
   ```bash
   make audit
-  make audit-report
+  make audit TARGET=../outro-repo
   ```
-- **Auditar repositório externo (ex: fulltech-memory):**
-  ```bash
-  make audit TARGET=/home/ubuntu/projetos/_Fulltech/fulltech-memory
-  make audit-report TARGET=/home/ubuntu/projetos/_Fulltech/fulltech-memory
-  ```
-- **Dashboard Central Interativo com Remediações Visuais:**
-  Acesse **`http://localhost:8765/#safecode`** no navegador para ver trechos de código antes/depois, links oficiais e filtros por severidade.
+- **Revisão guiada:** `/security-check` cobre o que scanner não pega (autorização por recurso, rate limiting, sessões), seguindo `rules/security.md`.
 
 ### Gerenciar Tarefas no Backlog.md (Kanban & Telemetria)
 - **Criar tarefa via CLI:**

@@ -16,7 +16,7 @@ make dev           # Inicia o servidor local
 make lint          # Executa linters
 make typecheck     # Checagem de tipos
 make test          # Executa testes unitários
-make audit         # Auditoria do SafeCode Guardian
+make audit         # Segredos (gitleaks) + auditoria de dependências
 make verify        # Verificação end-to-end com evidências
 ```
 

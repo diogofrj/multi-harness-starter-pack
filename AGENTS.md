@@ -35,13 +35,13 @@ Este é o documento de autoridade comum para todos os harnesses usados no projet
   - `/init-project`: Scaffolding inteligente para novos repositórios.
   - `/babysit-pr`: Monitoramento autônomo de CI e comentários em Pull Requests.
   - `/fix-issue`: Investigação sistemática com reprodução obrigatória antes de correções.
-  - `/security-check`: Auditoria de segurança corporativa via SafeCode Guardian.
+  - `/security-check`: Auditoria de segurança guiada por `rules/security.md` e OWASP.
 - **Trabalho Paralelo Seguro:** Cada harness simultâneo opera em seu próprio Git Worktree (`make worktree-new NAME=<wave>`). Nunca opere dois agentes no mesmo diretório de trabalho.
 
 ### Pilar 5: Loops Supervisionados & Evidência Real
 - **Evidência, Não Opinião:** Nunca declare sucesso ou conclusão sem executar ferramentas reais que comprovem o resultado (testes passando, exit code 0, resposta HTTP esperada).
 - **Metas Verificáveis com Teto de Tentativas:** Toda execução em loop ou meta (`/goal`) exige uma condição de parada computacional e um teto seguro de iterações (`stop after N tries`).
-- **Auditoria Contínua com SafeCode Guardian:** O comando `make audit` executa a checagem das 13 regras de segurança (`rules/security.md`), OWASP Top 10, OWASP LLM & MCP e conformidade SDD, gerando notas de A a F e controle de Red Flags.
+- **Auditoria Contínua:** `make audit` roda gitleaks (segredos) e a auditoria de dependências da stack; `make verify` = gate do projeto + `make audit`. As 13 regras de `rules/security.md` cobrem o que scanner não pega e são checadas na revisão (`/security-check`, `code-reviewer`).
 
 ---
 
@@ -102,16 +102,3 @@ A integração com Fulltech Memory é um acelerador opcional. Consulte `docs/ful
 - **Dependências:** Novas bibliotecas exigem justificativa, verificação de reputação e ausência de vulnerabilidades conhecidas.
 - **Tipagem Estrita:** TypeScript não usa `any` sem justificativa técnica formal.
 - **Revisão de Segurança:** Validação obrigatória no backend, queries parametrizadas (Prepared Statements), proteção contra IDOR/BOLA e rate limiting em endpoints críticos.
-
----
-
-<!-- guardiao-baseline:start -->
-## Baseline de conformidade do Guardião Fulltech
-
-A baseline canônica fica em `~/projetos/00-Guidelines/baseline/CATALOGO.md` (versão fixada em `baseline/VERSION`); procedimentos em `baseline/ADOTAR.md` e `baseline/VERIFICACAO.md`. Não replique nem edite a baseline dentro deste projeto.
-
-- **Auditoria Local Instantânea:** Execute `make audit` para avaliar a aderência imediata deste repositório ao SafeCode Guardian (13 regras de segurança, OWASP Top 10, OWASP LLM & MCP, Scorecard de Arquitetura SDD).
-- **Gatilho manual:** Quando o usuário disser **“sincronizar aderência com o Guardião”** (ou **“atualizar conformidade do Guardião”**), carregue a skill global `guardian-sync`, faça o de-para completo dos controles da versão fixada contra este projeto e atualize o painel central.
-- Mantenha `docs/compliance/guardiao-baseline.md` como de-para legível deste projeto: versão da baseline, revisão avaliada, data, revisor e tabela dos controles com status, justificativa e caminhos de evidência.
-- Atualize `~/projetos/00-Guidelines/monitor/assessments/<nome-exato-da-pasta-do-projeto>.json` que alimenta o portal do Guardião em `http://localhost:8765/#safecode`.
-<!-- guardiao-baseline:end -->

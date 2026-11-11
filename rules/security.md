@@ -1,6 +1,6 @@
 # Security
 
-13 secure-coding rules for AI-assisted development. Treat every rule as mandatory; `make audit` checks them statically, and rules marked **Red Flag** block `make verify`.
+13 secure-coding rules for AI-assisted development. Treat every rule as mandatory. `make audit` covers secrets and dependencies automatically; the rest is checked in review (`/security-check`, `code-reviewer`). Rules marked **Red Flag** block merge when violated.
 
 ## 1. Secrets and credentials (Red Flag)
 

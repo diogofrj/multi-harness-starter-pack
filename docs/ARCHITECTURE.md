@@ -14,8 +14,8 @@ graph TD
     Claude --> WorktreeA[Git Worktree A]
     Gemini --> WorktreeB[Git Worktree B]
     
-    WorktreeA --> Guardian[SafeCode Guardian Audit]
-    WorktreeB --> Guardian
+    WorktreeA --> Verify[make verify: gate + audit]
+    WorktreeB --> Verify
     
     WorktreeA --> Board[Kanban SSE Telemetry]
     WorktreeB --> Board

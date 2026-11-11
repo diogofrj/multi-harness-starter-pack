@@ -22,7 +22,7 @@ Run the project's gates from `CLAUDE.md → ## Commands`, in this order:
 1. Test (`make test`)
 2. Lint (`make lint`)
 3. Typecheck (`make typecheck`, if the stack has one)
-4. SafeCode Guardian Audit (`make audit` — 13 security rules, OWASP, SDD Scorecard)
+4. Security audit (`make audit` — gitleaks + dependency audit)
 
 Ou execute diretamente `make verify` para rodar todos os gates com evidências.
 

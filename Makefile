@@ -1,4 +1,4 @@
-.PHONY: help install dev board board-docker board-status board-stop board-smoke pulse-watch lint typecheck test test-watch deploy-staging deploy-prod worktree-new worktree-list worktree-clean audit audit-report audit-gate verify new-project retrofit spec waves backlog-browser board-all
+.PHONY: help install dev board board-docker board-status board-stop board-smoke pulse-watch lint typecheck test test-watch deploy-staging deploy-prod worktree-new worktree-list worktree-clean audit verify new-project retrofit spec waves backlog-browser board-all
 
 BOARD_DEFAULT_PORT := $(shell node scripts/board-config.mjs get port)
 BOARD_PORT_VALUE := $(if $(BOARD_PORT),$(BOARD_PORT),$(BOARD_DEFAULT_PORT))
@@ -103,22 +103,20 @@ test-watch: ## Executa testes em modo watch
 		if [ -f pnpm-lock.yaml ]; then pnpm run test:watch; else npm run test:watch; fi; \
 	else echo "Nenhum test:watch configurado"; exit 2; fi
 
-audit: ## Executa auditoria do SafeCode Guardian (Ex: make audit TARGET=/caminho/repo)
-	@if [ -f /home/ubuntu/projetos/00-Guidelines/monitor/guardian.py ]; then \
-		python3 /home/ubuntu/projetos/00-Guidelines/monitor/guardian.py --path $(TARGET); \
-	else \
-		echo "Guardião não encontrado em ~/projetos/00-Guidelines"; exit 1; \
+audit: ## Auditoria de segurança: segredos (gitleaks) + dependências da stack; falha se faltar ferramenta (Ex: make audit TARGET=/caminho/repo)
+	@set -e; cd "$(TARGET)"; \
+	command -v gitleaks >/dev/null 2>&1 || { echo "gitleaks ausente: rode 'mise install' (versão fixada em mise.toml)"; exit 2; }; \
+	gitleaks dir . --redact --no-banner; \
+	if [ -f package-lock.json ]; then npm audit --audit-level=high; fi; \
+	if [ -f pnpm-lock.yaml ]; then pnpm audit --audit-level high; fi; \
+	if [ -f requirements.txt ] || [ -f pyproject.toml ]; then \
+		command -v pip-audit >/dev/null 2>&1 || { echo "pip-audit ausente"; exit 2; }; \
+		if [ -f requirements.txt ]; then pip-audit -r requirements.txt; else pip-audit .; fi; \
 	fi
 
-audit-report: ## Exibe relatório detalhado da auditoria com diagnóstico e remediações (Ex: make audit-report TARGET=/caminho/repo)
-	@node scripts/audit-report.mjs $(TARGET)
-
-audit-gate: ## Falha se alguma Red Flag do SafeCode Guardian estiver aberta
-	@node scripts/audit-gate.mjs $(TARGET)
-
-verify: ## Gate do projeto (ci se existir, senão test) + audit-gate; falha se qualquer um falhar
+verify: ## Gate do projeto (ci se existir, senão test) + audit; falha se qualquer um falhar
 	@if grep -qE '^ci[[:space:]]*:' $(firstword $(MAKEFILE_LIST)); then $(MAKE) -s ci; else $(MAKE) -s test; fi
-	@$(MAKE) -s audit-gate
+	@$(MAKE) -s audit
 
 new-project: ## Cria um novo projeto baseado no starter pack (Ex: make new-project NAME=meu-app STACK=node)
 	@node scripts/init-project.mjs $(if $(NAME),--name $(NAME),) $(if $(STACK),--stack $(STACK),) $(if $(DEST),--dest $(DEST),) $(if $(DESC),--desc "$(DESC)",)

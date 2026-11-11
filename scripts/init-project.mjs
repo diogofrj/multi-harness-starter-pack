@@ -4,7 +4,7 @@
  *
  * Scaffolding engine para o Multi-Harness Enterprise Starter Pack.
  * Cria um novo projeto limpo, customiza os arquivos canônicos, inicializa git
- * e valida a conformidade inicial com o SafeCode Guardian.
+ * e deixa os gates (make verify) prontos para a Wave 0.
  *
  * Uso interativo:
  *   node scripts/init-project.mjs
@@ -32,7 +32,6 @@ function parseArgs() {
     desc: 'Novo serviço Fulltech',
     owner: '',
     nonInteractive: false,
-    skipAudit: false,
   };
 
   for (let i = 0; i < args.length; i++) {
@@ -43,7 +42,6 @@ function parseArgs() {
     else if (arg === '--desc' && args[i + 1]) options.desc = args[++i];
     else if (arg === '--owner' && args[i + 1]) options.owner = args[++i];
     else if (arg === '--non-interactive') options.nonInteractive = true;
-    else if (arg === '--skip-audit') options.skipAudit = true;
   }
   return options;
 }
@@ -199,7 +197,7 @@ Todos os harnesses devem ler este arquivo no início de cada sessão e atualizá
 - [x] Arquitetura em Vertical Slices + DDD definida para a stack ${options.stack}.
 - [x] Spec-Driven Development obrigatório via /spec antes de implementar.
 - [x] Isolamento físico de agentes via Git Worktrees (make worktree-new).
-- [x] SafeCode Guardian integrado no pipeline de verificação (make audit).
+- [x] Auditoria de segurança (gitleaks + dependências) no pipeline de verificação (make audit).
 
 ## Roadmap de Ondas
 
@@ -236,14 +234,14 @@ order: a1
 
 ## Description
 <!-- SECTION:DESCRIPTION:BEGIN -->
-Configurar contratos base, documentar \`SPEC.md\` via Spec-Driven Development, criar contratos OpenAPI em \`docs/api/openapi.yaml\` e assegurar conformidade SafeCode Guardian Grau A.
+Configurar contratos base, documentar \`SPEC.md\` via Spec-Driven Development, criar contratos OpenAPI em \`docs/api/openapi.yaml\` e deixar \`make verify\` verde.
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Verify
 <!-- SECTION:VERIFY:BEGIN -->
 - [ ] \`SPEC.md\` aprovado com regras de negócio e limites arquiteturais
 - [ ] Contratos de API em \`docs/api/\` validados
-- [ ] \`make audit\` executando com score >= 90 (Grau A)
+- [ ] \`make audit\` sem achados (segredos e dependências)
 <!-- SECTION:VERIFY:END -->
 `;
   fs.writeFileSync(task1Path, initialTask, 'utf8');
@@ -260,24 +258,6 @@ Configurar contratos base, documentar \`SPEC.md\` via Spec-Driven Development, c
     console.log('✅ Repositório Git inicializado com sucesso.');
   } catch (err) {
     console.warn('⚠️  Aviso: Não foi possível executar o commit inicial do Git:', err.message);
-  }
-
-  // Executa auditoria do SafeCode Guardian no projeto novo
-  const guardianScript = '/home/ubuntu/projetos/00-Guidelines/monitor/guardian.py';
-  if (!options.skipAudit && fs.existsSync(guardianScript)) {
-    console.log('\n🛡️  Executando auditoria inicial do SafeCode Guardian...');
-    try {
-      const auditOutput = execSync(`python3 ${guardianScript} --path "${destPath}"`, {
-        encoding: 'utf8',
-      });
-      const parsed = JSON.parse(auditOutput.trim());
-      console.log(`🎯 Scorecard Inicial: ${parsed.global_score}/100 | Grau: ${parsed.grade} | Achados: ${parsed.findings}`);
-      if (parsed.grade === 'A') {
-        console.log('✨ Projeto 100% compliant com as regras de segurança, OWASP e SDD!');
-      }
-    } catch (e) {
-      console.warn('⚠️  Aviso: Auditoria do SafeCode Guardian não pôde ser completada:', e.message);
-    }
   }
 
   console.log('\n========================================================');

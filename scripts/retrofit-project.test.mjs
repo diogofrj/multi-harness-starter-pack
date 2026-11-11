@@ -58,7 +58,7 @@ async function retrofit(dir, ...flags) {
   const log = console.log;
   console.log = () => {};
   try {
-    return await main(['--target', dir, '--skip-audit', ...flags]);
+    return await main(['--target', dir, ...flags]);
   } finally {
     console.log = log;
   }
@@ -135,8 +135,7 @@ test('Makefile: injeta só alvos ausentes e verify não é verde falso', async (
 
   assert.ok(makefile.startsWith(ORIGINAL.Makefile));
   assert.equal(makefile.match(/^audit\s*:/gm).length, 1);
-  assert.match(makefile, /^audit-gate\s*:/m);
-  assert.match(makefile, /^verify\s*:[\s\S]*audit-gate/m);
+  assert.match(makefile, /^verify\s*:[\s\S]*audit/m);
   assert.doesNotMatch(makefile, /conclu[ií]da com sucesso/);
 });
 

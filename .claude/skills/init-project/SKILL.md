@@ -23,7 +23,7 @@ Quando o usuário solicitar criar ou inicializar um novo projeto:
 
 3. **Verificar o resultado:**
    - Confirme se o diretório de destino foi criado e o Git inicializado.
-   - Verifique se a auditoria inicial do SafeCode Guardian confirmou o **Grau A**.
+   - Rode `make verify` no projeto novo e confirme saída 0.
 
 4. **Orientar os próximos passos:**
    - Indique o comando `cd <caminho>`

@@ -103,7 +103,7 @@ Descrição detalhada da entrega e critérios de aceite.
 ## Verify
 <!-- SECTION:VERIFY:BEGIN -->
 - [ ] Testes unitários passando
-- [ ] make audit com score >= 90
+- [ ] make audit sem achados
 <!-- SECTION:VERIFY:END -->
 ```
 

@@ -27,7 +27,7 @@ Todos os harnesses devem ler este arquivo no início e atualizá-lo ao concluir 
 - **DoD:**
   - [x] `backlog/config.yml` e padrão Backlog.md (`backlog/tasks/`) como fonte única da configuração e tarefas.
   - [x] Fusão concluída: Fulltech SSE Kanban (3100) integrado com Backlog.md Browser (6420).
-  - [x] Hand-off preparado e auditoria SafeCode Guardian Grau A.
+  - [x] Hand-off preparado e auditoria de segurança aprovada.
 
 ### Wave 0 — Especificação e arquitetura
 
